@@ -1,0 +1,30 @@
+{
+  "name": "klynge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Klynge — Market Risk Intelligence. Public landing, brand system and deterministic market-truth engine.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "node scripts/build.mjs && node scripts/serve.mjs",
+    "build": "node scripts/build.mjs && tsc -p tsconfig.build.json",
+    "brand": "node scripts/brand/generate.mjs",
+    "brand:check": "node scripts/brand/generate.mjs --check",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint . && node scripts/checks/public-boundary.mjs && node scripts/brand/generate.mjs --check",
+    "qa": "node scripts/build.mjs && node scripts/qa/landing-qa.mjs",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run qa"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^22.20.5",
+    "eslint": "^9.39.5",
+    "playwright-core": "^1.56.1",
+    "typescript": "5.9",
+    "typescript-eslint": "^8.71.1"
+  }
+}

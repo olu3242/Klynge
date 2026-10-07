@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="t">
+  <title id="t">Klynge — See the Market Before You Take Risk</title>
+  <rect width="1200" height="630" fill="#070a08"/>
+  <path d="M640 0L1200 315L640 630" stroke="#252d27" fill="none"/>
+  <path d="M760 0L1200 315L760 630" stroke="#252d27" fill="none"/>
+  <path d="M880 0L1200 315L880 630" stroke="#9dff3f" stroke-opacity="0.4" fill="none"/>
+  <g id="klynge-mark">
+    <path id="stem" d="M80 80H94.087V152H80Z" fill="#f7f9f7"/>
+    <path id="arm-upper" d="M128.522 80H145.739L116 112.087L107.391 103.478Z" fill="#9dff3f"/>
+    <path id="arm-lower" d="M107.391 128.522L116 119.913L145.739 152H128.522Z" fill="#9dff3f"/>
+    <path id="decision-node" d="M100.348 116L107.391 108.957L114.435 116L107.391 123.043Z" fill="#d8ffb5"/>
+  </g>
+  <text x="80" y="250" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="600" fill="#9dff3f" letter-spacing="4">MARKET RISK INTELLIGENCE</text>
+  <text x="80" y="330" font-family="Inter, system-ui, sans-serif" font-size="72" font-weight="800" fill="#f7f9f7" letter-spacing="-1.5">See the Market</text>
+  <text x="80" y="410" font-family="Inter, system-ui, sans-serif" font-size="72" font-weight="800" fill="#f7f9f7" letter-spacing="-1.5">Before You Take Risk</text>
+  <text x="80" y="548" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="500" fill="#9ea89f">Klynge is not financial advice. Trading involves substantial risk.</text>
+</svg>

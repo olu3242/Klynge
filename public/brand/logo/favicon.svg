@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-labelledby="t">
+  <title id="t">Klynge</title>
+  <rect width="32" height="32" rx="7" fill="#070a08"/>
+  <g id="klynge-mark">
+    <path id="stem" d="M5.957 5H10.261V27H5.957Z" fill="#f7f9f7"/>
+    <path id="arm-upper" d="M20.783 5H26.043L16.957 14.804L14.326 12.174Z" fill="#9dff3f"/>
+    <path id="arm-lower" d="M14.326 19.826L16.957 17.196L26.043 27H20.783Z" fill="#9dff3f"/>
+    <path id="decision-node" d="M12.174 16L14.326 13.848L16.478 16L14.326 18.152Z" fill="#d8ffb5"/>
+  </g>
+</svg>

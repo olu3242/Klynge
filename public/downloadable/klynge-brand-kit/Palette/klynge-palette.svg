@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="t">
+  <title id="t">Klynge color palette</title>
+  <rect width="1200" height="800" fill="#070a08"/>
+  <text x="40" y="66" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="700" fill="#f7f9f7">Klynge — Canonical Palette</text>
+  <rect x="40" y="100" width="260" height="96" rx="12" fill="#070a08" stroke="#252d27"/>
+  <text x="40" y="224" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-black</text>
+  <text x="40" y="246" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#070a08</text>
+  <rect x="320" y="100" width="260" height="96" rx="12" fill="#0d110f" stroke="#252d27"/>
+  <text x="320" y="224" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-surface</text>
+  <text x="320" y="246" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#0d110f</text>
+  <rect x="600" y="100" width="260" height="96" rx="12" fill="#141a16" stroke="#252d27"/>
+  <text x="600" y="224" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-surface-elevated</text>
+  <text x="600" y="246" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#141a16</text>
+  <rect x="880" y="100" width="260" height="96" rx="12" fill="#252d27" stroke="#252d27"/>
+  <text x="880" y="224" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-border</text>
+  <text x="880" y="246" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#252d27</text>
+  <rect x="40" y="270" width="260" height="96" rx="12" fill="#9dff3f" stroke="#252d27"/>
+  <text x="40" y="394" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-lime</text>
+  <text x="40" y="416" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#9dff3f</text>
+  <rect x="320" y="270" width="260" height="96" rx="12" fill="#b5ff70" stroke="#252d27"/>
+  <text x="320" y="394" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-lime-bright</text>
+  <text x="320" y="416" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#b5ff70</text>
+  <rect x="600" y="270" width="260" height="96" rx="12" fill="#d8ffb5" stroke="#252d27"/>
+  <text x="600" y="394" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-lime-soft</text>
+  <text x="600" y="416" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#d8ffb5</text>
+  <rect x="880" y="270" width="260" height="96" rx="12" fill="#f7f9f7" stroke="#252d27"/>
+  <text x="880" y="394" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-text</text>
+  <text x="880" y="416" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#f7f9f7</text>
+  <rect x="40" y="440" width="260" height="96" rx="12" fill="#9ea89f" stroke="#252d27"/>
+  <text x="40" y="564" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-text-secondary</text>
+  <text x="40" y="586" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#9ea89f</text>
+  <rect x="320" y="440" width="260" height="96" rx="12" fill="#6f786f" stroke="#252d27"/>
+  <text x="320" y="564" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-text-muted</text>
+  <text x="320" y="586" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#6f786f</text>
+  <rect x="600" y="440" width="260" height="96" rx="12" fill="#31d17c" stroke="#252d27"/>
+  <text x="600" y="564" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-success</text>
+  <text x="600" y="586" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#31d17c</text>
+  <rect x="880" y="440" width="260" height="96" rx="12" fill="#ff5252" stroke="#252d27"/>
+  <text x="880" y="564" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-danger</text>
+  <text x="880" y="586" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#ff5252</text>
+  <rect x="40" y="610" width="260" height="96" rx="12" fill="#f5a623" stroke="#252d27"/>
+  <text x="40" y="734" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-warning</text>
+  <text x="40" y="756" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#f5a623</text>
+  <rect x="320" y="610" width="260" height="96" rx="12" fill="#788078" stroke="#252d27"/>
+  <text x="320" y="734" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="600" fill="#f7f9f7">--klynge-neutral</text>
+  <text x="320" y="756" font-family="ui-monospace, monospace" font-size="14" font-weight="500" fill="#9ea89f">#788078</text>
+</svg>

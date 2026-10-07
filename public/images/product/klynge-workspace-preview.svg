@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="600" viewBox="0 0 960 600" role="img" aria-labelledby="t">
+  <title id="t">Illustrative Klynge workspace showing a WAIT state with elevated risk</title>
+  <rect width="960" height="600" rx="24" fill="#0d110f"/>
+  <rect x="0.5" y="0.5" width="959" height="599" rx="23.5" fill="none" stroke="#252d27"/>
+  <text x="40" y="64" font-family="Inter, system-ui, sans-serif" font-size="14" font-weight="600" fill="#6f786f" letter-spacing="2">MARKET CONTEXT</text>
+  <rect x="40" y="82" width="118" height="34" rx="17" fill="#f5a623" fill-opacity="0.14" stroke="#f5a623" stroke-opacity="0.5"/>
+  <text x="60" y="105" font-family="Inter, system-ui, sans-serif" font-size="15" font-weight="700" fill="#f5a623">CAUTIOUS</text>
+  <text x="40" y="196" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="600" fill="#9ea89f">TSLA</text>
+  <text x="40" y="256" font-family="Inter, system-ui, sans-serif" font-size="54" font-weight="700" fill="#f7f9f7">$241.36</text>
+  <rect x="40" y="300" width="400" height="120" rx="16" fill="#141a16" stroke="#252d27"/>
+  <text x="64" y="340" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" fill="#6f786f" letter-spacing="2">CURRENT STATE</text>
+  <text x="64" y="392" font-family="Inter, system-ui, sans-serif" font-size="40" font-weight="800" fill="#f7f9f7">WAIT</text>
+  <rect x="40" y="440" width="400" height="110" rx="16" fill="#141a16" stroke="#252d27"/>
+  <text x="64" y="480" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" fill="#6f786f" letter-spacing="2">RISK</text>
+  <text x="64" y="526" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="800" fill="#ff5252">▲ ELEVATED</text>
+  <rect x="480" y="40" width="440" height="510" rx="16" fill="#141a16" stroke="#252d27"/>
+  <text x="512" y="88" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" fill="#6f786f" letter-spacing="2">CONDITIONS</text>
+  <line x1="512" y1="180" x2="888" y2="180" stroke="#252d27"/>
+  <text x="512" y="150" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="600" fill="#f7f9f7">Context</text>
+  <text x="888" y="150" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="700" fill="#31d17c" text-anchor="end">✓ met</text>
+  <line x1="512" y1="270" x2="888" y2="270" stroke="#252d27"/>
+  <text x="512" y="240" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="600" fill="#f7f9f7">Structure</text>
+  <text x="888" y="240" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="700" fill="#31d17c" text-anchor="end">✓ met</text>
+  <line x1="512" y1="360" x2="888" y2="360" stroke="#252d27"/>
+  <text x="512" y="330" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="600" fill="#f7f9f7">Price action</text>
+  <text x="888" y="330" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="700" fill="#f5a623" text-anchor="end">… pending</text>
+  <line x1="512" y1="450" x2="888" y2="450" stroke="#252d27"/>
+  <text x="512" y="420" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="600" fill="#f7f9f7">Risk</text>
+  <text x="888" y="420" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="700" fill="#f5a623" text-anchor="end">… pending</text>
+  <text x="512" y="530" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="500" fill="#6f786f">Illustrative interface · sample data</text>
+</svg>

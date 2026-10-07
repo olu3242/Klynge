@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="219.02" height="40" viewBox="0 0 219.02 40" role="img" aria-labelledby="t">
+  <title id="t">Klynge</title>
+  <g id="klynge-wordmark">
+    <path id="letter-k-stem" d="M0 0H7.826V40H0Z" fill="#f7f9f7"/>
+    <path id="letter-k-upper" d="M26.957 0H36.522L20 17.826L15.217 13.043Z" fill="#f7f9f7"/>
+    <path id="letter-k-lower" d="M15.217 26.957L20 22.174L36.522 40H26.957Z" fill="#f7f9f7"/>
+    <path id="letter-k-node" d="M11.304 20L15.217 16.087L19.13 20L15.217 23.913Z" fill="#9dff3f"/>
+    <path id="letter-l" d="M43.022 0H50.522V32.5H69.022V40H43.022Z" fill="#f7f9f7"/>
+    <path id="letter-y" d="M75.522 0H84.122L92.522 13.2L100.922 0H109.522L96.272 20.5V40H88.772V20.5Z" fill="#f7f9f7"/>
+    <path id="letter-n" d="M116.022 0H123.522L140.522 26V0H148.022V40H140.522L123.522 14V40H116.022Z" fill="#f7f9f7"/>
+    <path id="letter-g" d="M154.522 0H186.522V7.5H162.022V32.5H179.022V24H170.522V16.5H186.522V40H154.522Z" fill="#f7f9f7"/>
+    <path id="letter-e" d="M193.022 0H219.022V7.5H200.522V16.25H215.022V23.75H200.522V32.5H219.022V40H193.022Z" fill="#f7f9f7"/>
+  </g>
+</svg>

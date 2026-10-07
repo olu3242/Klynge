@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="244.7" height="64" viewBox="0 0 244.7 64" role="img" aria-labelledby="t">
+  <title id="t">Klynge logo</title>
+  <g id="klynge-mark">
+    <path id="stem" d="M0 0H12.522V64H0Z" fill="#070a08"/>
+    <path id="arm-upper" d="M43.13 0H58.435L32 28.522L24.348 20.87Z" fill="#3f7d12"/>
+    <path id="arm-lower" d="M24.348 43.13L32 35.478L58.435 64H43.13Z" fill="#3f7d12"/>
+    <path id="decision-node" d="M18.087 32L24.348 25.739L30.609 32L24.348 38.261Z" fill="#3f7d12"/>
+  </g>
+  <g id="klynge-wordmark">
+    <path id="letter-k-stem" d="M80.435 17H86.304V47H80.435Z" fill="#070a08"/>
+    <path id="letter-k-upper" d="M100.652 17H107.826L95.435 30.37L91.848 26.783Z" fill="#070a08"/>
+    <path id="letter-k-lower" d="M91.848 37.217L95.435 33.63L107.826 47H100.652Z" fill="#070a08"/>
+    <path id="letter-k-node" d="M88.913 32L91.848 29.065L94.783 32L91.848 34.935Z" fill="#3f7d12"/>
+    <path id="letter-l" d="M112.701 17H118.326V41.375H132.201V47H112.701Z" fill="#070a08"/>
+    <path id="letter-y" d="M137.076 17H143.526L149.826 26.9L156.126 17H162.576L152.639 32.375V47H147.014V32.375Z" fill="#070a08"/>
+    <path id="letter-n" d="M167.451 17H173.076L185.826 36.5V17H191.451V47H185.826L173.076 27.5V47H167.451Z" fill="#070a08"/>
+    <path id="letter-g" d="M196.326 17H220.326V22.625H201.951V41.375H214.701V35H208.326V29.375H220.326V47H196.326Z" fill="#070a08"/>
+    <path id="letter-e" d="M225.201 17H244.701V22.625H230.826V29.188H241.701V34.813H230.826V41.375H244.701V47H225.201Z" fill="#070a08"/>
+  </g>
+</svg>

@@ -1,0 +1,383 @@
+{
+  "name": "Klynge brand assets",
+  "version": "1.0.0",
+  "generatedBy": "scripts/brand/generate.mjs",
+  "themes": {
+    "dark": "artwork for dark backgrounds",
+    "light": "artwork for light backgrounds"
+  },
+  "assets": [
+    {
+      "filename": "brand/logo/klynge-logo-dark.svg",
+      "format": "svg",
+      "purpose": "Primary logo lockup (mark + wordmark)",
+      "theme": "dark",
+      "alt": "Klynge logo",
+      "dimensions": {
+        "width": 244.7,
+        "height": 64
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/logo/klynge-logo-light.svg",
+      "format": "svg",
+      "purpose": "Primary logo lockup (mark + wordmark)",
+      "theme": "light",
+      "alt": "Klynge logo",
+      "dimensions": {
+        "width": 244.7,
+        "height": 64
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/logo/klynge-wordmark-dark.svg",
+      "format": "svg",
+      "purpose": "Wordmark only",
+      "theme": "dark",
+      "alt": "Klynge",
+      "dimensions": {
+        "width": 219.02,
+        "height": 40
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/logo/klynge-wordmark-light.svg",
+      "format": "svg",
+      "purpose": "Wordmark only",
+      "theme": "light",
+      "alt": "Klynge",
+      "dimensions": {
+        "width": 219.02,
+        "height": 40
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/logo/klynge-icon-dark.svg",
+      "format": "svg",
+      "purpose": "App icon / avatar (dark tile)",
+      "theme": "dark",
+      "alt": "Klynge icon",
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/logo/klynge-icon-light.svg",
+      "format": "svg",
+      "purpose": "App icon / avatar (light tile)",
+      "theme": "light",
+      "alt": "Klynge icon",
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/logo/favicon.svg",
+      "format": "svg",
+      "purpose": "Browser favicon",
+      "theme": "dark",
+      "alt": "Klynge",
+      "dimensions": {
+        "width": 32,
+        "height": 32
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/klynge-palette.svg",
+      "format": "svg",
+      "purpose": "Palette swatch sheet",
+      "theme": "dark",
+      "alt": "Klynge color palette",
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "images/landing/klynge-hero-backdrop.svg",
+      "format": "svg",
+      "purpose": "Decorative landing hero backdrop",
+      "theme": "dark",
+      "alt": "",
+      "dimensions": {
+        "width": 1440,
+        "height": 640
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "images/product/klynge-workspace-preview.svg",
+      "format": "svg",
+      "purpose": "Illustrative product preview (sample data)",
+      "theme": "dark",
+      "alt": "Illustrative Klynge workspace showing a WAIT state with elevated risk",
+      "dimensions": {
+        "width": 960,
+        "height": 600
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "images/social/klynge-og-1200x630.svg",
+      "format": "svg",
+      "purpose": "Open Graph / link preview image",
+      "theme": "dark",
+      "alt": "Klynge — See the Market Before You Take Risk",
+      "dimensions": {
+        "width": 1200,
+        "height": 630
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "images/social/klynge-banner-1500x500.svg",
+      "format": "svg",
+      "purpose": "Social profile banner",
+      "theme": "dark",
+      "alt": "Klynge — Market Risk Intelligence",
+      "dimensions": {
+        "width": 1500,
+        "height": 500
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/klynge-icon-dark-16.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-icon-dark.svg",
+      "theme": "dark",
+      "alt": "Klynge icon",
+      "dimensions": {
+        "width": 16,
+        "height": 16
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/klynge-icon-dark-32.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-icon-dark.svg",
+      "theme": "dark",
+      "alt": "Klynge icon",
+      "dimensions": {
+        "width": 32,
+        "height": 32
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/apple-touch-icon.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-icon-dark.svg",
+      "theme": "dark",
+      "alt": "Klynge icon",
+      "dimensions": {
+        "width": 180,
+        "height": 180
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/klynge-icon-dark-192.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-icon-dark.svg",
+      "theme": "dark",
+      "alt": "Klynge icon",
+      "dimensions": {
+        "width": 192,
+        "height": 192
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/klynge-icon-dark-512.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-icon-dark.svg",
+      "theme": "dark",
+      "alt": "Klynge icon",
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/klynge-icon-dark-1024.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-icon-dark.svg",
+      "theme": "dark",
+      "alt": "Klynge icon",
+      "dimensions": {
+        "width": 1024,
+        "height": 1024
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/klynge-icon-light-512.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-icon-light.svg",
+      "theme": "light",
+      "alt": "Klynge icon",
+      "dimensions": {
+        "width": 512,
+        "height": 512
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/klynge-logo-dark-1200.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-logo-dark.svg",
+      "theme": "dark",
+      "alt": "Klynge logo",
+      "dimensions": {
+        "width": 1200,
+        "height": 314
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/klynge-logo-light-1200.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-logo-light.svg",
+      "theme": "light",
+      "alt": "Klynge logo",
+      "dimensions": {
+        "width": 1200,
+        "height": 314
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/klynge-wordmark-dark-1200.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-wordmark-dark.svg",
+      "theme": "dark",
+      "alt": "Klynge",
+      "dimensions": {
+        "width": 1200,
+        "height": 219
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/klynge-wordmark-light-1200.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-wordmark-light.svg",
+      "theme": "light",
+      "alt": "Klynge",
+      "dimensions": {
+        "width": 1200,
+        "height": 219
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "brand/png/klynge-palette.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-palette.svg",
+      "theme": "dark",
+      "alt": "Klynge color palette",
+      "dimensions": {
+        "width": 1200,
+        "height": 800
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "images/social/klynge-og-1200x630.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-og-1200x630.svg",
+      "theme": "dark",
+      "alt": "Klynge — See the Market Before You Take Risk",
+      "dimensions": {
+        "width": 1200,
+        "height": 630
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "images/social/klynge-banner-1500x500.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-banner-1500x500.svg",
+      "theme": "dark",
+      "alt": "Klynge — Market Risk Intelligence",
+      "dimensions": {
+        "width": 1500,
+        "height": 500
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "images/social/klynge-avatar-800.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-icon-dark.svg",
+      "theme": "dark",
+      "alt": "Klynge icon",
+      "dimensions": {
+        "width": 800,
+        "height": 800
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "images/product/klynge-workspace-preview.png",
+      "format": "png",
+      "purpose": "Raster export of klynge-workspace-preview.svg",
+      "theme": "dark",
+      "alt": "Illustrative Klynge workspace showing a WAIT state with elevated risk",
+      "dimensions": {
+        "width": 1920,
+        "height": 1200
+      },
+      "version": "1.0.0"
+    },
+    {
+      "filename": "downloadable/klynge-brand-kit/Palette/klynge-palette.json",
+      "format": "json",
+      "purpose": "Brand kit palette/documentation",
+      "theme": "n/a",
+      "alt": "",
+      "dimensions": null,
+      "version": "1.0.0"
+    },
+    {
+      "filename": "downloadable/klynge-brand-kit/Palette/klynge-tokens.css",
+      "format": "css",
+      "purpose": "Brand kit palette/documentation",
+      "theme": "n/a",
+      "alt": "",
+      "dimensions": null,
+      "version": "1.0.0"
+    },
+    {
+      "filename": "downloadable/klynge-brand-kit/README.md",
+      "format": "md",
+      "purpose": "Brand kit palette/documentation",
+      "theme": "n/a",
+      "alt": "",
+      "dimensions": null,
+      "version": "1.0.0"
+    },
+    {
+      "filename": "downloadable/klynge-brand-kit.zip",
+      "format": "zip",
+      "purpose": "Complete downloadable brand kit",
+      "theme": "n/a",
+      "alt": "",
+      "dimensions": null,
+      "version": "1.0.0"
+    }
+  ]
+}

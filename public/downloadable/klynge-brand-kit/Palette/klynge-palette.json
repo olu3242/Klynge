@@ -1,0 +1,24 @@
+{
+  "name": "Klynge",
+  "version": "1.0.0",
+  "color": {
+    "black": "#070a08",
+    "surface": "#0d110f",
+    "surface-elevated": "#141a16",
+    "border": "#252d27",
+    "lime": "#9dff3f",
+    "lime-bright": "#b5ff70",
+    "lime-soft": "#d8ffb5",
+    "text": "#f7f9f7",
+    "text-secondary": "#9ea89f",
+    "text-muted": "#6f786f",
+    "success": "#31d17c",
+    "danger": "#ff5252",
+    "warning": "#f5a623",
+    "neutral": "#788078"
+  },
+  "colorExtended": {
+    "lime-deep": "#3f7d12",
+    "paper": "#f7f9f7"
+  }
+}

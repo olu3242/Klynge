@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="500" viewBox="0 0 1500 500" role="img" aria-labelledby="t">
+  <title id="t">Klynge banner</title>
+  <rect width="1500" height="500" fill="#070a08"/>
+  <path d="M900 0L1500 250L900 500" stroke="#252d27" fill="none"/>
+  <path d="M1050 0L1500 250L1050 500" stroke="#9dff3f" stroke-opacity="0.4" fill="none"/>
+  <g id="klynge-wordmark">
+    <path id="letter-k-stem" d="M120 210H132.522V274H120Z" fill="#f7f9f7"/>
+    <path id="letter-k-upper" d="M163.13 210H178.435L152 238.522L144.348 230.87Z" fill="#f7f9f7"/>
+    <path id="letter-k-lower" d="M144.348 253.13L152 245.478L178.435 274H163.13Z" fill="#f7f9f7"/>
+    <path id="letter-k-node" d="M138.087 242L144.348 235.739L150.609 242L144.348 248.261Z" fill="#9dff3f"/>
+    <path id="letter-l" d="M188.835 210H200.835V262H230.435V274H188.835Z" fill="#f7f9f7"/>
+    <path id="letter-y" d="M240.835 210H254.595L268.035 231.12L281.475 210H295.235L274.035 242.8V274H262.035V242.8Z" fill="#f7f9f7"/>
+    <path id="letter-n" d="M305.635 210H317.635L344.835 251.6V210H356.835V274H344.835L317.635 232.4V274H305.635Z" fill="#f7f9f7"/>
+    <path id="letter-g" d="M367.235 210H418.435V222H379.235V262H406.435V248.4H392.835V236.4H418.435V274H367.235Z" fill="#f7f9f7"/>
+    <path id="letter-e" d="M428.835 210H470.435V222H440.835V236H464.035V248H440.835V262H470.435V274H428.835Z" fill="#f7f9f7"/>
+  </g>
+  <text x="120" y="340" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="500" fill="#9ea89f">Market Risk Intelligence</text>
+</svg>
