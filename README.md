@@ -4,7 +4,9 @@ Risk-first market decision-support platform. This repository contains:
 
 - **Public landing**: `index.html`, `styles/`, `js/`, and assets in `public/`. Static, with zero runtime dependencies.
 - **Brand system**: canonical tokens in `src/brand/tokens.json`. A deterministic generator produces the logo, wordmark, icon, favicon, social, palette, brand kit and zip (`public/brand/asset-manifest.json`).
-- **Market-truth engine** (internal): deterministic data quality → indicators → structure → technical state → SPX/MNQ regime → trade permission, in `src/klynge/`.
+- **Deterministic engine** (internal, `src/klynge/`):
+  - Market truth: data quality → indicators → structure → technical state → SPX/MNQ regime (with an optional SPY/ES volume proxy) → trade permission.
+  - Setup engine: levels → break → acceptance → retest → confirmation → risk → CALL_SETUP / PUT_SETUP / WAIT / BLOCKED / INVALIDATED.
 
 ## Commands
 ```bash

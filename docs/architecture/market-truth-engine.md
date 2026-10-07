@@ -2,7 +2,7 @@
 
 > INTERNAL. Never link from, copy into, or paraphrase on public surfaces. See `docs/policies/public-boundary.md`.
 
-Engine `KLYNGE_ENGINE_VERSION = 0.1.0` · rules `KLYNGE_RULE_VERSION = market-truth-v1` · source `src/klynge/`.
+Introduced in engine `0.1.0` / rules `market-truth-v1`; current engine `0.2.0` / `setup-engine-v1` (see `KLYNGE_RULE_HISTORY`). Source `src/klynge/`. Setup layer: `docs/architecture/setup-engine.md`.
 
 ## 1. Authority
 
@@ -139,7 +139,14 @@ Downstream modules (setup engine, options, alerts, agents) must gate on `isDirec
 
 ## 11. Known gaps / operational notes
 
-- **Index volume:** many SPX cash-index feeds report zero volume, which leaves VWAP undefined. The engine then fails closed: technical state unavailable, regime `UNKNOWN`, `BLOCKED`. Production needs a volume-bearing proxy decision (e.g. SPY or ES volume). This is a product/data decision, not an engine change.
+- **Index volume (resolved in 0.2.0):** many SPX feeds report zero volume. `MarketContextPolicy` assigns explicit roles:
+  - SPX = `PRICE_STRUCTURE`
+  - MNQ = `RISK_CONFIRMATION`
+  - SPY (or ES) = optional `VOLUME_PROXY`
+
+  The proxy must match `volumeProxySymbol` and be bar-aligned with SPX. It supplies **only** VWAP weights (applied to SPX typical prices) and relative volume. SPX still supplies price, EMA, ATR, structure and direction.
+
+  A session passed in the wrong role (for example SPY as SPX) is `MIXED_SERIES`, which is BLOCKED. Provenance records `marketContext.broadMarketVolumeSource`. Without a proxy, zero SPX volume still fails closed.
 - Indicators warm up within a single session, so the first 21 bars of each session are `INSUFFICIENT_HISTORY`. Multi-session warm-up is future work.
 - Exchange calendars and holidays are not modeled. Session boundaries are supplied by the caller.
-- Reserved, unimplemented modules: `levels/`, `price-action/`, `confirmation/`, `risk/`, `triggers/`, `options/`, `replay/`, `journal/`.
+- Reserved, unimplemented modules: `options/`, `replay/`, `journal/`.

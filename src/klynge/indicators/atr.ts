@@ -30,3 +30,10 @@ export function atr(bars: readonly Bar[], period: number = ATR_PERIOD): number |
   if (tr.length < period) return null;
   return sma(tr.slice(-period));
 }
+
+/** ATR as known at each bar (no lookahead): out[i] = atr(bars[0..i]) or null while insufficient. */
+export function atrSeries(bars: readonly Bar[], period: number = ATR_PERIOD): (number | null)[] {
+  assertPeriod(period);
+  const tr = trueRanges(bars);
+  return bars.map((_, i) => (i < period ? null : sma(tr.slice(i - period, i))));
+}

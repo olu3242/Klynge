@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Klynge — Market Risk Intelligence. Public landing, brand system and deterministic market-truth engine.",
+  "description": "Klynge \u2014 Market Risk Intelligence. Public landing, brand system and deterministic market-truth engine.",
   "engines": {
     "node": ">=22.18"
   },
   "scripts": {
     "dev": "node scripts/build.mjs && node scripts/serve.mjs",
-    "build": "node scripts/build.mjs && tsc -p tsconfig.build.json",
+    "build": "node scripts/build.mjs && node -e \"require('fs').rmSync('build/engine',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
     "brand": "node scripts/brand/generate.mjs",
     "brand:check": "node scripts/brand/generate.mjs --check",
     "test": "node --test \"src/**/*.test.ts\"",

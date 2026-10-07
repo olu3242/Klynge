@@ -59,6 +59,9 @@ export interface TechnicalState {
   volumeRatio: number;
 
   structure: MarketStructure;
+
+  /** Present only when an explicitly permitted volume proxy supplied VWAP weights / relative volume. */
+  volumeSymbol?: string;
 }
 
 export interface RegimeState {

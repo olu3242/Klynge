@@ -26,6 +26,16 @@ const IP_PATTERNS = [
   [/minimumTechnicalCandles|maxStalenessMs|KLYNGE_RULE_VERSION|market-truth-v\d/, "engine policy/config"],
   [/relative volume|volumeRatio|swing (high|low)s?\b/i, "indicator internals"],
   [/docs\/architecture|src\/klynge/, "link to internal docs/source"],
+  // setup-engine-v1 internals
+  [/\bacceptance\b|required closes|sustained closes/i, "acceptance rule"],
+  [/(support|resistance)[\s/-]*(cluster|clustering)|level[\s-]*cluster|touch(es)?[\s-]*tolerance|ATR[\s-]*tolerance/i, "level-clustering formula"],
+  [/break[\s-]*(threshold|distance)|close[\s-]*distance|closes? (above|below) (resistance|support)/i, "break threshold"],
+  [/retest[\s-]*(tolerance|depth)|\bretest(ing|ed)?\b/i, "retest logic"],
+  [/reward[\s/:-]*(to[\s-]*)?risk|risk[\s/:-]*(to[\s-]*)?reward|\bR:R\b|\bR\/R\b/i, "reward/risk mechanics"],
+  [/entry[\s-]*zone|stop[\s-]*(distance|algorithm|placement)|structural invalidation|invalidation (price|tolerance|level)/i, "stop/entry algorithm"],
+  [/next (valid |meaningful )?(resistance|support)|target[\s-]*selection/i, "target-selection mechanics"],
+  [/state[\s-]*machine|state[\s-]*transition|PriceActionState|LEGAL_TRANSITIONS|setup-engine-v\d/i, "state-transition logic"],
+  [/minimumRewardRiskRatio|maximumStopAtr|requiredCloses|minimumCloseDistanceAtr|atrToleranceMultiplier|maximumFailureDistanceAtr|entryToleranceAtr|invalidationToleranceAtr|volumeProxySymbol/, "setup policy/config"],
 ];
 
 /** Language Klynge never uses publicly. */

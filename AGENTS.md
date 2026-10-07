@@ -10,7 +10,7 @@ Klynge is NOT a brokerage, an investment adviser, a guaranteed signal service, o
 |---|---|---|
 | `index.html`, `styles/`, `js/`, `public/` | PUBLIC | Landing page + brand assets → `dist/` |
 | `src/brand/tokens.json` | source of truth | Design tokens → `npm run brand` regenerates `styles/tokens.css`, SVG/PNG assets, kit, zip, manifest |
-| `src/klynge/` | INTERNAL | Deterministic market-truth engine (`market-truth-v1`) |
+| `src/klynge/` | INTERNAL | Deterministic engine: market truth + setup engine (`setup-engine-v1`) |
 | `docs/architecture/`, `docs/policies/` | INTERNAL | Engine spec, public/product/internal boundary |
 | `scripts/` | tooling | build, serve, brand pipeline, boundary scan, QA |
 
@@ -29,7 +29,8 @@ Agents **may not**:
 - bypass BLOCKED
 - change deterministic results
 
-Agent claims are validated with `checkAgentClaim()`. Engine outputs are deep-frozen.
+Agent claims are validated with `checkAgentClaim()` (market truth) and `checkAgentSetupClaim()` (setup state). Engine outputs are deep-frozen.
+Agents may consume `PriceLevel`, `PriceActionState`, `ConfirmationState`, `RiskState` and `KlyngeDecisionState`. They may never turn WAIT into CALL_SETUP/PUT_SETUP, BLOCKED into a setup, or INVALIDATED back into an active state.
 
 ## Canonical agents
 | Name | Identifier |
@@ -54,7 +55,9 @@ Defined in `src/klynge/agents/registry.ts`. Do not rename or add agents without 
 3. Determinism: no `Date.now()`, `new Date()` or `Math.random()` in `src/`. ESLint enforces this. Pass `now` explicitly.
 4. Changing a rule or threshold requires bumping `KLYNGE_RULE_VERSION` and updating `docs/architecture/market-truth-engine.md`.
 5. Never weaken a test or a rule to get green checks.
-6. Not yet implemented, and must not be faked: levels, break/retest, options selection, brokerage, live alerts, autonomous trading.
+6. `evaluateSetup()` is the only setup decision. Regime is permission to continue analysis, never a setup. CALL_SETUP and PUT_SETUP require every stage plus `validateDecisionState()`.
+7. Volume proxies (SPY/ES) supply volume context only. They never replace SPX price, EMA, structure or direction.
+8. Not yet implemented, and must not be faked: multi-timeframe, options selection, replay, journal, brokerage, live alerts, autonomous trading.
 
 ## Public page rules
 1. No engine internals on public surfaces (see `docs/policies/public-boundary.md`). `npm run lint` fails on leaks.

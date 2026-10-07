@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { isDirectionallyEligible } from "../policies/invariants.ts";
 import { FIVE_MIN, makeSession, nowAfter, T0, withCandle } from "../test-fixtures.ts";
 import { evaluateMarketTruth } from "./market-truth.ts";
-import { KLYNGE_ENGINE_VERSION, KLYNGE_RULE_VERSION } from "./version.ts";
+import { KLYNGE_ENGINE_VERSION, KLYNGE_RULE_HISTORY, KLYNGE_RULE_VERSION } from "./version.ts";
 
 const up = (symbol: string) => makeSession({ symbol, trend: "up" });
 const down = (symbol: string) => makeSession({ symbol, trend: "down" });
@@ -62,8 +62,10 @@ describe("evaluateMarketTruth (end-to-end)", () => {
   it("carries provenance from the explicit clock", () => {
     const s = evaluateMarketTruth({ spx: up("SPX"), mnq: up("MNQ"), now });
     assert.deepEqual(s.provenance, { engineVersion: KLYNGE_ENGINE_VERSION, ruleVersion: KLYNGE_RULE_VERSION, evaluatedAt: now });
-    assert.equal(KLYNGE_ENGINE_VERSION, "0.1.0");
-    assert.equal(KLYNGE_RULE_VERSION, "market-truth-v1");
+    assert.equal(KLYNGE_ENGINE_VERSION, "0.2.0");
+    assert.equal(KLYNGE_RULE_VERSION, "setup-engine-v1");
+    // Historical provenance is preserved, never rewritten.
+    assert.deepEqual(KLYNGE_RULE_HISTORY.map((h) => h.ruleVersion), ["market-truth-v1", "setup-engine-v1"]);
   });
 });
 

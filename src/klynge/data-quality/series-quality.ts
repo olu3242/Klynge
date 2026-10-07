@@ -201,3 +201,11 @@ export function mergeDataQuality(...states: readonly DataQualityState[]): DataQu
     blockers,
   };
 }
+
+/** A failed data-quality state for a single, explicitly-named violation (e.g. role/alignment errors). */
+export function dataQualityFailure(blocker: BlockerCode, reason: string): DataQualityState {
+  const state = emptyState();
+  const c = new Collector();
+  c.flag(blocker, reason);
+  return finalize(state, c);
+}
