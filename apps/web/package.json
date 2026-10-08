@@ -1,6 +1,6 @@
 {
   "name": "@klynge/web",
-  "version": "0.4.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -18,7 +18,9 @@
     "test:rls": "node --test --test-timeout=120000 \"test/rls/*.test.ts\"",
     "rls:hosted": "node --conditions=react-server scripts/rls-hosted.ts",
     "worker:notifications": "node --conditions=react-server scripts/notification-worker.ts",
-    "readiness:hosted": "node --conditions=react-server scripts/hosted-readiness.ts"
+    "readiness:hosted": "node --conditions=react-server scripts/hosted-readiness.ts",
+    "release:check": "node --conditions=react-server scripts/release-check.ts",
+    "pilot:admin": "node --conditions=react-server scripts/pilot-admin.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.0",

@@ -62,7 +62,10 @@ export type AuditAction =
   | "notification.failed"
   | "notification.suppressed"
   | "data.connected"
-  | "ops.recovered";
+  | "ops.recovered"
+  | "pilot.activated"
+  | "feedback.submitted"
+  | "account.exported";
 
 export interface AuditEntry {
   auditId: string;

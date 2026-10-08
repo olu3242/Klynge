@@ -40,6 +40,7 @@ const SERVER_ENV = {
   KLYNGE_STORE: "file",
   KLYNGE_STORE_FILE: path.join(STATE_DIR, "store.json"),
   KLYNGE_ACCOUNT_STORE_FILE: path.join(STATE_DIR, "account.json"),
+  KLYNGE_PILOT_STORE_FILE: path.join(STATE_DIR, "pilot.json"),
   KLYNGE_EMAIL: "mock",
   KLYNGE_IMAGE_RETENTION: "SESSION",
   KLYNGE_CRON_SECRET: "e2e-cron-secret-not-for-production-000000",
@@ -119,7 +120,7 @@ async function workspace(now, viewport = { width: 1440, height: 900 }) {
     }
     return { status: r.status(), body };
   };
-  return { context, page, errors, clock, scenario, upload, label, permission, status, api };
+  return { context, page, errors, clock, scenario, upload, label, permission, status, api, setHeaders };
 }
 
 async function signInGoogle(w, email) {
@@ -140,6 +141,16 @@ async function signInMagicLink(w, email) {
   await w.page.goto(new URL(outbox.body.link, BASE).toString());
   await w.page.waitForURL(/\/app/);
 }
+/** Sign in (mock Google) and land wherever the server sends the user (/app, or /pilot under invite-only). */
+async function signInAs(w, email, next = "/app") {
+  await w.page.goto(`${BASE}/sign-in?next=${encodeURIComponent(next)}`);
+  await w.page.getByRole("button", { name: "Continue with Google" }).click();
+  await w.page.waitForURL(/\/auth\/mock\/google/);
+  await w.page.getByLabel("Google account email").fill(email);
+  await w.page.getByRole("button", { name: "Continue" }).click();
+  await w.page.waitForURL((u) => /^\/(app|pilot)(\/|$)/.test(u.pathname));
+}
+const INVITE_ONLY = { "x-klynge-access": "invite-only" };
 const connect = async (w, symbol) => {
   const done = w.page.waitForResponse((r) => r.url().endsWith("/api/data/connect"));
   if (symbol) await w.page.getByTestId("data-connect").getByLabel(/^Symbol/).fill(symbol);
@@ -407,6 +418,150 @@ try {
   check("no browser console errors (operator)", o.errors.length === 0, o.errors.slice(0, 3).join(" | "));
   await o.context.close();
 
+  // ── 16. Controlled pilot certification (Batches 71–80; matrix in docs/certification/pilot-operations-v1.md) ──
+  // Every context below runs with invite-only access (test-mode header), exactly as a production deployment would.
+  const op = await workspace(END - 5 * MIN);
+  await op.setHeaders(INVITE_ONLY);
+  await signInAs(op, "ops@example.com", "/app/ops/pilot");
+  await op.page.goto(`${BASE}/app/ops/pilot`);
+  await op.page.getByLabel("Invite email").fill("pia@example.com");
+  await op.page.getByRole("button", { name: "Invite", exact: true }).click();
+  await op.page.getByTestId("admin-invites").getByText("pia@example.com").waitFor();
+  check("P1: operator invites by email (audited)", (await op.page.getByTestId("admin-audit").innerText()).includes("pilot.invited"));
+
+  const anon = await workspace(END - 5 * MIN);
+  await anon.setHeaders(INVITE_ONLY);
+  await anon.page.goto(`${BASE}/app`);
+  const anonApi = await anon.api("/api/workspace");
+  check("P1: invite-only — anonymous visitors are sent to sign-in; APIs refuse (401 PILOT_ACCESS)", anon.page.url().includes("/sign-in") && anonApi.status === 401 && anonApi.body?.code === "PILOT_ACCESS", `${anon.page.url()} ${anonApi.status}`);
+  await anon.context.close();
+
+  const nia = await workspace(END - 5 * MIN);
+  await nia.setHeaders(INVITE_ONLY);
+  await signInAs(nia, "nia@example.com");
+  await nia.page.goto(`${BASE}/app`);
+  const niaApi = await nia.api("/api/workspace");
+  check("P1: a verified but uninvited user is held at /pilot (NOT_INVITED) and refused by APIs (403)", nia.page.url().endsWith("/pilot") && (await nia.page.getByTestId("pilot-state").getAttribute("data-state")) === "NOT_INVITED" && niaApi.status === 403, `${nia.page.url()} ${niaApi.status}`);
+
+  const pia = await workspace(END - 5 * MIN);
+  await pia.setHeaders(INVITE_ONLY);
+  await signInAs(pia, "pia@example.com");
+  await pia.page.goto(`${BASE}/app`);
+  check("P1: invited user sees the risk acknowledgement + consent (INVITED)", pia.page.url().endsWith("/pilot") && (await pia.page.getByTestId("pilot-state").getAttribute("data-state")) === "INVITED");
+  const activateBtn = pia.page.getByRole("button", { name: "Activate pilot access" });
+  const disabledFirst = await activateBtn.isDisabled();
+  const boxes = pia.page.getByTestId("pilot-state").getByRole("checkbox");
+  await boxes.nth(0).check();
+  await boxes.nth(1).check();
+  await activateBtn.click();
+  await pia.page.waitForURL((u) => u.pathname === "/app");
+  await pia.page.getByTestId("onboarding").waitFor();
+  check("P1: activation needs both explicit acknowledgements, then opens the guided workspace", disabledFirst && (await pia.page.getByTestId("onboarding").isVisible()));
+  check("P1: activation recorded in the user's audit log", /pilot\.activated/.test((await pia.page.goto(`${BASE}/app/status`), await pia.page.locator("main").innerText())));
+  await pia.page.goto(`${BASE}/app`);
+  await pia.page.getByRole("button", { name: "I understand evidence modes" }).click();
+  await pia.page.locator('[data-step="evidence-modes"][data-done="true"]').waitFor();
+
+  // P3: user chart → visual context → correction
+  await pia.upload("tsla-5m-bull", END - 5 * MIN);
+  await pia.upload("spx-5m-bull", END - 4 * MIN);
+  await pia.upload("mnq-5m-bull", END - 3 * MIN);
+  await pia.page.getByTestId("visual-label").waitFor();
+  check("P3: user charts → VISUAL context only (no directional language in the visual card)", !DIRECTIONAL.test(await pia.page.getByTestId("visual-context").innerText()) && /WAIT|BLOCKED/.test(await pia.permission()));
+  await pia.page.locator("[data-testid=chart-TARGET]").getByRole("button", { name: "Confirm Symbol" }).click();
+  await pia.page.locator("[data-testid=chart-TARGET] tr[data-field=symbol] [data-status=USER_CONFIRMED]").waitFor();
+  await pia.page.goto(`${BASE}/app`);
+  check("P3: correction recorded; onboarding reflects chart set + corrections (USER_CONFIRMED ≠ DATA_VERIFIED)", (await pia.page.locator('[data-step="chart-set"]').getAttribute("data-done")) === "true" && (await pia.page.locator('[data-step="corrections"]').getAttribute("data-done")) === "true" && (await pia.status("TARGET", "symbol")) === "USER_CONFIRMED");
+
+  // P4/P5: verified DATA → deterministic evaluation; WAIT/BLOCKED enforcement
+  await pia.clock(END);
+  const piaGood = await connect(pia);
+  check("P4: verified DATA mode → deterministic evaluation", piaGood.status === "DATA_VERIFIED" && (await pia.page.getByTestId("data-decision-value").innerText()) === "CALL_SETUP", piaGood.text);
+  await pia.scenario("stale");
+  const piaStale = await connect(pia, "TSLA");
+  check("P5: stale provider data => BLOCKED (never a setup from stale data)", piaStale.status === "BLOCKED", piaStale.text.replace(/\s+/g, " "));
+  await pia.scenario("outage");
+  const piaOut = await connect(pia, "TSLA");
+  await pia.scenario(null);
+  const piaBack = await connect(pia, "TSLA");
+  check("P10: provider outage => BLOCKED; recovery resumes from the stored decision", piaOut.status === "BLOCKED" && ["UNCHANGED", "DATA_VERIFIED"].includes(piaBack.status), `${piaOut.status} → ${piaBack.status}`);
+
+  // P7: journal, alerts, history
+  await pia.page.getByLabel(/Note on the latest analysis/).fill("Pilot note: waiting for confirmation.");
+  await pia.page.getByRole("button", { name: "Add note" }).click();
+  await pia.page.getByText("Pilot note: waiting for confirmation.").waitFor();
+  const piaWs = await pia.api("/api/workspace");
+  await pia.page.goto(`${BASE}/app/history`);
+  check("P7: journal, alerts and session history available to the pilot user", piaWs.body.alerts.length > 0 && /TSLA/.test(await pia.page.locator("main").innerText()));
+
+  // P8: feedback → admin review (never changes a decision)
+  await pia.page.goto(`${BASE}/app`);
+  const decisionBefore = await pia.page.getByTestId("data-decision-value").innerText();
+  await pia.page.getByLabel("Clarity of the explanation").selectOption("4");
+  await pia.page.getByLabel("Problem area").selectOption("DATA");
+  await pia.page.getByLabel("Report a problem (optional)").fill("The SPX chart looked cropped on my phone.");
+  await pia.page.getByRole("button", { name: "Send feedback" }).click();
+  await pia.page.getByTestId("feedback-status").filter({ hasText: "Thank you" }).waitFor();
+  await pia.page.goto(`${BASE}/app`);
+  check("P8: feedback recorded; the engine decision is unchanged", (await pia.page.getByTestId("data-decision-value").innerText()) === decisionBefore);
+  await op.page.goto(`${BASE}/app/ops/pilot`);
+  const item = op.page.locator("[data-feedback]").filter({ hasText: "cropped on my phone" });
+  const listed = (await item.count()) === 1;
+  await item.getByLabel("Triage").selectOption("DEFECT_CONFIRMED");
+  await item.getByLabel("Defect ref (KLY-n)").fill("KLY-1");
+  await item.getByRole("button", { name: "Save triage" }).click();
+  await op.page.locator('[data-feedback][data-triage="DEFECT_CONFIRMED"]').waitFor();
+  check("P8: admin reviews feedback and records a verified defect separately (KLY-1), audited", listed && /feedback\.triaged/.test(await op.page.getByTestId("admin-audit").innerText()));
+
+  // P9: cross-user + cross-role isolation
+  const roleProbe = [await pia.api("/api/admin/pilot"), await pia.api("/api/admin/pilot", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "invite", email: "friend@example.com" }) }), await pia.api("/api/admin/ops")];
+  const niaHistory = await nia.api("/api/history");
+  check("P9: pilot users cannot reach the control plane (404); other users cannot read pilot data", roleProbe.every((r) => r.status === 404) && niaHistory.status === 403, `${roleProbe.map((r) => r.status).join(",")} nia=${niaHistory.status}`);
+
+  // P11: account-data privacy controls
+  const exp = await pia.api("/api/account/export");
+  check("P11: export returns the user's own data only (no other users, no images)", exp.status === 200 && exp.body.decisions.length > 0 && exp.body.pilot.feedback.length === 1 && !/(ada|bea|cy|dee|nia)@example\.com|iVBORw0KGgo/.test(JSON.stringify(exp.body)), String(exp.status));
+  await pia.page.goto(`${BASE}/app/settings`);
+  check("P11: settings expose export + typed-confirmation deletion", (await pia.page.getByTestId("account-data").isVisible()) && (await pia.page.getByRole("button", { name: "Delete my data" }).isDisabled()));
+  const eve = await workspace(END - 5 * MIN);
+  await signInAs(eve, "eve@example.com");
+  await eve.upload("tsla-5m-bull", END - 5 * MIN);
+  const badDelete = await eve.api("/api/account/delete", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ confirmation: "yes" }) });
+  const goodDelete = await eve.api("/api/account/delete", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ confirmation: "DELETE MY DATA" }) });
+  const eveAfter = await eve.api("/api/history");
+  check("P11: deletion requires the typed confirmation and removes the user's data", badDelete.status === 400 && goodDelete.status === 200 && goodDelete.body.deleted > 0 && eveAfter.status === 200 && eveAfter.body.length === 0, `${badDelete.status} ${goodDelete.status} ${JSON.stringify(eveAfter.body).slice(0, 80)}`);
+  await eve.context.close();
+
+  // P12: suspension → access denied (privacy rights preserved)
+  await op.page.goto(`${BASE}/app/ops/pilot`);
+  await op.page.getByRole("button", { name: /^Suspend usr_/ }).click();
+  await op.page.locator('[data-testid=admin-enrollments] [data-status="SUSPENDED"]').waitFor();
+  await pia.page.goto(`${BASE}/app`);
+  const suspendedApi = await pia.api("/api/workspace");
+  const suspendedExport = await pia.api("/api/account/export");
+  check("P12: suspended user is held at /pilot, refused by APIs (403), but can still export", pia.page.url().endsWith("/pilot") && (await pia.page.getByTestId("pilot-state").getAttribute("data-state")) === "SUSPENDED" && suspendedApi.status === 403 && suspendedExport.status === 200, `${pia.page.url()} ${suspendedApi.status} ${suspendedExport.status}`);
+  check("P12: suspension audited by a hashed operator ref (no emails)", /op_[0-9a-f]{12} · pilot\.suspended/.test(await (await op.page.goto(`${BASE}/app/ops/pilot`), op.page.getByTestId("admin-audit").innerText())) && !/pia@example\.com/.test(await op.page.getByTestId("admin-audit").innerText()));
+
+  // P13: release approval + rollback readiness
+  const rel = op.page.getByTestId("admin-release");
+  const relText = await rel.innerText();
+  check("P13: release visible; awaiting human approval, deployment not authorized, migration 0004 awaiting separate authorization", (await rel.getAttribute("data-verdict")) === "READY_FOR_APPROVAL" && /deployment not authorized/.test(relText) && /0004_klynge_pilot\.sql/.test(relText), relText.replace(/\s+/g, " "));
+  for (const [ctx, page] of [[pia, "/pilot"], [op, "/app/ops/pilot"]]) {
+    await ctx.page.goto(`${BASE}${page}`);
+    for (const width of [1440, 390]) {
+      await ctx.page.setViewportSize({ width, height: 900 });
+      const overflow = await ctx.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      check(`no horizontal overflow ${page} @${width}`, overflow <= 0, overflow > 0 ? `${overflow}px` : "");
+    }
+    await ctx.page.setViewportSize({ width: 1440, height: 900 });
+    const pa = await ctx.page.evaluate(() => [...document.querySelectorAll("input, select, textarea")].filter((el) => !(el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`)) && !el.closest("label") && el.type !== "hidden").length);
+    check(`accessibility basics ${page} (labelled controls)`, pa === 0, String(pa));
+  }
+  check("no browser console errors (pilot)", [...pia.errors, ...op.errors, ...nia.errors].filter((e) => !/40[134]/.test(e)).length === 0, [...pia.errors, ...op.errors, ...nia.errors].slice(0, 3).join(" | "));
+  await pia.context.close();
+  await nia.context.close();
+  await op.context.close();
+
   // ── 11. Skewed chart set => BLOCKED (anonymous) ─────────────────────────────────────────────────────
   const s = await workspace(T);
   await s.upload("tsla-5m-bull", T);
@@ -445,7 +600,7 @@ try {
 
 // ── 14. Log hygiene: no image bytes, account text, auth tokens, emails or secrets ─────────────────────
 const png = readFileSync(img("broker-balance-tsla")).toString("base64");
-const leaks = ["iVBORw0KGgo", png.slice(200, 260), "4471-0098", "data:image/", "eyJ", "e2e-only-secret", "ada@example.com", "bea@example.com", "cy@example.com", "dee@example.com", "ops@example.com", "e2e-cron-secret", "service_role"].filter((m) => logs.includes(m));
+const leaks = ["iVBORw0KGgo", png.slice(200, 260), "4471-0098", "data:image/", "eyJ", "e2e-only-secret", "ada@example.com", "bea@example.com", "cy@example.com", "dee@example.com", "ops@example.com", "pia@example.com", "nia@example.com", "eve@example.com", "cropped on my phone", "e2e-cron-secret", "service_role"].filter((m) => logs.includes(m));
 check("server logs contain no image data or account text", leaks.length === 0, leaks.join(", "));
 rmSync(STATE_DIR, { recursive: true, force: true });
 

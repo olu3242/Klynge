@@ -10,7 +10,10 @@ export type TelemetryEventName =
   | "auth.sign_in"
   | "auth.sign_out"
   | "session.promoted"
-  | "data.cycle";
+  | "data.cycle"
+  | "pilot.activated"
+  | "onboarding.step"
+  | "feedback.submitted";
 
 /** Allow-listed, non-sensitive attributes. Anything else (image bytes, notes, prices, raw ids) is dropped. */
 const ALLOWED: Record<TelemetryEventName, readonly string[]> = {
@@ -24,6 +27,9 @@ const ALLOWED: Record<TelemetryEventName, readonly string[]> = {
   "auth.sign_out": [],
   "session.promoted": ["charts"],
   "data.cycle": ["kind", "provider", "permission", "decision"],
+  "pilot.activated": ["cohort"],
+  "onboarding.step": ["step"],
+  "feedback.submitted": ["category", "rated", "hasProblem"],
 };
 
 export interface TelemetryEvent {

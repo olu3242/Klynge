@@ -2,19 +2,19 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
-import { requestContext } from "@/server/http";
+import { pageContext } from "@/server/http";
 import { history } from "@/server/workspace";
 
 export const dynamic = "force-dynamic";
 
 export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ symbol?: string }> }) {
   const { symbol } = await searchParams;
-  const ctx = await requestContext();
+  const ctx = await pageContext("/app/history");
   // Protected: history is tenant-owned durable data — a verified user only.
   if (ctx.identity.kind !== "USER") redirect(`/sign-in?next=${encodeURIComponent("/app/history")}`);
   const rows = await history(ctx.deps, ctx.identity.tenantId, symbol?.toUpperCase() || undefined);
   return (
-    <AppShell active="history" account={{ email: ctx.identity.user.email, authEnabled: true }}>
+    <AppShell active="history" account={{ email: ctx.identity.user.email, authEnabled: true, operator: ctx.pilot.operator }}>
       <h1 className="text-3xl font-extrabold tracking-tight">History{symbol ? ` · ${symbol.toUpperCase()}` : ""}</h1>
       <form className="mt-4 flex max-w-sm gap-2" action="/app/history">
         <label htmlFor="symbol" className="sr-only">

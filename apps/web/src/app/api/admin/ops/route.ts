@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /** Operator-only aggregates. Everyone else gets 404 (the route's existence is not disclosed). */
 export async function GET(req: Request) {
-  const ctx = await requestContext().catch(() => null);
+  const ctx = await requestContext({ pilotGate: false }).catch(() => null);
   if (!ctx || !isOperator(ctx.identity, ctx.gateway.kind)) return new NextResponse(null, { status: 404 });
   const p = processDeps();
   return NextResponse.json(collectOpsReport({ storeMode: p.storeMode, durable: (p.durable as MemorySessionStore | null) ?? null, account: p.account, market: ctx.deps.market ?? null }, clockFrom(req.headers)), { headers: { "cache-control": "no-store" } });

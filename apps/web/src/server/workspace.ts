@@ -18,6 +18,7 @@ import type { MarketDataSetup } from "./market-data.ts";
 import { applyUserPolicy, DEFAULT_USER_RISK_POLICY } from "./engine-core.ts";
 import type { AccountStore, PolicyVerdictRecord } from "./account/types.ts";
 import { audit, deliverPending, queueAlertNotification } from "./notifications/dispatcher.ts";
+import type { PilotStore } from "./pilot/types.ts";
 import type { EmailProvider } from "./notifications/email.ts";
 import type { ExtractionHints, ChartExtractor } from "./extraction/types.ts";
 import { processUpload } from "./intake.ts";
@@ -40,6 +41,8 @@ export interface WorkspaceDeps {
   market?: MarketDataSetup | null;
   /** Verified users only: preferences, policy verdicts, notification outbox, audit log. */
   account?: AccountStore | null;
+  /** Verified users only: pilot enrollment, onboarding, feedback (never decisions). */
+  pilot?: PilotStore | null;
   email?: EmailProvider | null;
 }
 

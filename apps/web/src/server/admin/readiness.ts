@@ -44,6 +44,7 @@ export function validateHostedEnv(env: Readonly<Record<string, string | undefine
   add("deployment.marked", env.KLYNGE_DEPLOYMENT === "production" || env.VERCEL_ENV === "production", "deployment is marked production (test machinery hard-refused)", true);
   add("store.supabase", env.KLYNGE_STORE === "supabase", "durable store is Supabase (user-bound, RLS)");
   add("email.recipients", env.KLYNGE_EMAIL !== "mock", "mock email is not configured");
+  add("pilot.access", env.KLYNGE_ACCESS !== "open" || env.KLYNGE_RELEASE_AUTHORIZED === "general-availability", "public access stays invite-only until general availability is explicitly authorized");
   add("cron.secret", env.KLYNGE_EMAIL !== "resend" || (present(env.KLYNGE_CRON_SECRET) && (env.KLYNGE_CRON_SECRET as string).length >= 32), "notification worker secret configured (≥ 32 chars) when email is on", true);
   return out;
 }

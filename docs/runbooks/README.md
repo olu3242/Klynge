@@ -10,6 +10,9 @@ Deterministic, operator-facing procedures. Every incident on `/app/ops` links on
 | [stale-data.md](stale-data.md) | Stale sessions, historical-ingestion failures |
 | [runtime-recovery.md](runtime-recovery.md) | Corrupted runtime cursors, duplicate processing, restarts |
 | [notification-worker.md](notification-worker.md) | Dead letters, backlog, lease contention |
+| [account-deletion.md](account-deletion.md) | Hosted account deletion requests |
+
+Release and rollback governance: [docs/release/governance.md](../release/governance.md).
 
 Rules that hold in every procedure:
 

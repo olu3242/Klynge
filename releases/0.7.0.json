@@ -1,0 +1,53 @@
+{
+  "manifestVersion": 1,
+  "release": "0.7.0",
+  "engineVersion": "0.7.0",
+  "ruleVersion": "pilot-readiness-v1",
+  "appVersion": "0.4.0",
+  "previousRelease": null,
+  "schema": {
+    "migrations": [
+      {
+        "file": "0001_klynge_sessions.sql",
+        "sha256": "e8499c10ba01cfb62a4a16f4d55617fe4ca557cf2c07604754968358f22551dc",
+        "rollback": "0001_klynge_sessions.down.sql",
+        "rollbackSha256": "a23f97c8a723f8cc2a9effc4e32c62381a823a4e830becae2bf3d0c4cafb0505"
+      },
+      {
+        "file": "0002_klynge_account.sql",
+        "sha256": "00166163122c34c103039d7cd255086a329c9a344bf0ae2a0fb1b7e0b7edf55f",
+        "rollback": "0002_klynge_account.down.sql",
+        "rollbackSha256": "f3c9dfc67e10bdeb1a6e3c906105c3c701e72da6ae0984572fd9991baf6321db"
+      },
+      {
+        "file": "0003_klynge_notification_worker.sql",
+        "sha256": "4013681c3d0d391648cf30d552757e50ab3120bbb6a3afd023c2d91796f24421",
+        "rollback": "0003_klynge_notification_worker.down.sql",
+        "rollbackSha256": "75d3cb56ab19221939e186e7656d62913dddc372e9b5738c4e84dc30d5349044"
+      }
+    ]
+  },
+  "adapters": {
+    "polygon": "polygon-aggregates-v1",
+    "databento": "databento-glbx-ohlcv-1m-v1",
+    "cmeFutures": "cme-front-contract-v1",
+    "resend": "resend-emails-v1",
+    "extractor": "claude-chart-observations-v1"
+  },
+  "policyFingerprint": "07ec50a1d55d532b0545ed6c776410effaf3a55655161f221dc8187cb83c4a79",
+  "policyChange": null,
+  "approvals": [],
+  "authorizations": {
+    "deployment": {
+      "approved": false,
+      "by": null,
+      "at": null
+    },
+    "migrations": []
+  },
+  "rollback": {
+    "to": null,
+    "procedure": "docs/release/governance.md#rollback"
+  },
+  "note": "Recorded retroactively from commit 7a0f044 (Batches 61–70). Never deployed; no hosted migration authorized."
+}

@@ -16,6 +16,9 @@ Read `AGENTS.md` first; it applies in full.
 - 0.7.0: MNQ = licensed CME front contract only (never NQ); datasets versioned, never overwritten; holdout sealed before
   analysis, no performance/significance claims; hosted delivery only via the scheduled worker; operators are server-derived
   and see aggregates only. Runbooks live in `docs/runbooks/`.
+- 0.8.0: invite-only pilot until release authorization; feedback/analytics/operators never change decisions or policy;
+  satisfaction ≠ accuracy; releases need manifests (`npm run release:check`) with human approvals, deployment and
+  migrations authorized separately. Never self-approve a release manifest.
 
 ## Working style
 - Make surgical edits. Brand assets are generated, so edit `src/brand/tokens.json` or `scripts/brand/*` and run `npm run brand`. Never hand-edit generated SVG/CSS.

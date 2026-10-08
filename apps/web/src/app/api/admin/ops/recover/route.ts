@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 /** Deterministic recovery (operator only, CSRF-checked by middleware, audited). In-process stores only. */
 export async function POST(req: Request) {
-  const ctx = await requestContext().catch(() => null);
+  const ctx = await requestContext({ pilotGate: false }).catch(() => null);
   if (!ctx || ctx.identity.kind !== "USER" || !isOperator(ctx.identity, ctx.gateway.kind)) return new NextResponse(null, { status: 404 });
   const p = processDeps();
   if (!p.durable) return NextResponse.json({ error: "Hosted recovery runs from the runbook, not on a request path" }, { status: 501 });

@@ -13,6 +13,7 @@ export const SERVICE_ROLE_OPERATIONS = Object.freeze({
   "certification.test-users": "Create/delete dedicated test users for hosted RLS certification",
   "maintenance.cleanup": "Scheduled cleanup of orphaned non-user infrastructure rows",
   "notifications.dispatch": "Scheduled notification worker: claim/complete via migration 0003 functions only (no user CRUD)",
+  "pilot.admin": "Operator pilot administration: invitations, enrollment status, feedback triage, operator audit (never decisions)",
 } as const);
 
 export type ServiceRoleOperation = keyof typeof SERVICE_ROLE_OPERATIONS;

@@ -16,7 +16,7 @@ function walk(dir: string, out: string[] = []): string[] {
 
 describe("SERVICE ROLE ≠ USER AUTHORIZATION", () => {
   it("is a short explicit allowlist of non-user operations", () => {
-    assert.deepEqual(Object.keys(SERVICE_ROLE_OPERATIONS), ["schema.verify", "certification.test-users", "maintenance.cleanup", "notifications.dispatch"]);
+    assert.deepEqual(Object.keys(SERVICE_ROLE_OPERATIONS), ["schema.verify", "certification.test-users", "maintenance.cleanup", "notifications.dispatch", "pilot.admin"]);
     for (const op of ["session.read", "decision.write", "journal.insert", "user.crud"]) assert.equal(isAllowedServiceRoleOperation(op), false, op);
     assert.throws(() => serviceRoleClient("session.read", { SUPABASE_URL: "https://x", SUPABASE_SERVICE_ROLE_KEY: "k" }), /not allow-listed/);
     assert.throws(() => serviceRoleClient("schema.verify", {}), /are required/);

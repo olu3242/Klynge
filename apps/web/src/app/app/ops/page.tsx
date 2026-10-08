@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
-import { requestContext } from "@/server/http";
+import { pageContext } from "@/server/http";
 import { collectOpsReport, isOperator } from "@/server/ops/operator";
 import { clockFrom, processDeps } from "@/server/runtime";
 import type { MemorySessionStore } from "@/server/store/memory-store";
@@ -14,7 +14,7 @@ const iso = (t: number | null) => (t ? new Date(t).toISOString().replace(".000Z"
 
 /** Operator readiness dashboard: aggregates only — no user identities, message content, formulas or credentials. */
 export default async function OpsPage() {
-  const ctx = await requestContext();
+  const ctx = await pageContext("/app/ops");
   if (ctx.identity.kind !== "USER" || !isOperator(ctx.identity, ctx.gateway.kind)) notFound();
   const p = processDeps();
   const r = collectOpsReport({ storeMode: p.storeMode, durable: (p.durable as MemorySessionStore | null) ?? null, account: p.account, market: ctx.deps.market ?? null }, clockFrom(await headers()));
@@ -24,6 +24,11 @@ export default async function OpsPage() {
       <h1 className="text-3xl font-extrabold tracking-tight">Operations</h1>
       <p className="mt-2 flex flex-wrap items-center gap-3 text-sm" data-testid="ops-status" data-status={r.status}>
         <Badge tone={tone}>{r.status}</Badge> engine {r.engineVersion} · rules {r.ruleVersion} · store {r.storeMode} · {r.scope === "IN_PROCESS" ? "all tenants (aggregated)" : "provider health only — hosted aggregates run off the request path"}
+      </p>
+      <p className="mt-2 text-sm">
+        <a href="/app/ops/pilot" className="font-semibold text-k-lime">
+          Pilot administration →
+        </a>
       </p>
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <Card aria-labelledby="inc-title" data-testid="ops-incidents">

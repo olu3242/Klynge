@@ -1,6 +1,6 @@
-export const KLYNGE_ENGINE_VERSION = "0.7.0";
+export const KLYNGE_ENGINE_VERSION = "0.8.0";
 
-export const KLYNGE_RULE_VERSION = "pilot-readiness-v1";
+export const KLYNGE_RULE_VERSION = "pilot-operations-v1";
 
 /** Historical rule provenance. Never delete entries — recorded decisions reference them. */
 export const KLYNGE_RULE_HISTORY = Object.freeze([
@@ -34,6 +34,11 @@ export const KLYNGE_RULE_HISTORY = Object.freeze([
     engineVersion: "0.7.0",
     ruleVersion: "pilot-readiness-v1",
     summary: "CME futures front-contract selection + rollover (no NQ substitution), session-aligned bar aggregation (never filled), dataset versions + corporate-action flags, empirical decision analytics, sealed chronological holdout, cost sensitivity, out-of-sample reports (no performance or significance claims). Decision thresholds unchanged.",
+  }),
+  Object.freeze({
+    engineVersion: "0.8.0",
+    ruleVersion: "pilot-operations-v1",
+    summary: "Controlled pilot operations: invite-only enrollment, onboarding, evidence ledger, feedback + triage, pilot analytics, failure injection, privacy controls, admin control plane, release manifests with policy fingerprints. Deterministic policy defaults unchanged (identical fingerprint).",
   }),
 ] as const);
 

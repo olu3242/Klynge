@@ -24,6 +24,8 @@ export const MARKERS = [
   /service_role|serviceRoleClient|SERVICE_ROLE_OPERATIONS|KLYNGE_TEST_AUTH_SECRET|klynge_mock_session|x-klynge-provider-scenario|KLYNGE_PROVIDER_API_KEY|POLYGON_API_KEY|RESEND_API_KEY|KLYNGE_CRON_SECRET|api\.polygon\.io|api\.resend\.com/,
   // 0.7.0 pilot-readiness internals: evaluation, futures, worker, operator monitoring, CME credentials
   /pilot-readiness-v1|sealHoldout|outOfSampleReport|decisionAnalytics|calibrationView|replayDays|activeContract|aggregateBars|detectCorporateActions|runNotificationWorker|klynge_claim_notifications|klynge_complete_notification|runtimeCorruption|quarantineCorruptedRuntime|KLYNGE_ADMIN_EMAILS|DATABENTO_API_KEY|GLBX\.MDP3|hist\.databento\.com/,
+  // 0.8.0 pilot-operations internals: enrollment gate, evidence ledger, analytics, control plane, release governance
+  /pilot-operations-v1|pilotGateVerdict|accessMode|activatePilot|evidenceLedger|evidenceClass|pilotAnalytics|adminAction|policyFingerprint|releaseReadiness|ADAPTER_VERSIONS|KLYNGE_RELEASE_AUTHORIZED|klynge_ops_audit|klynge_feedback_triage|DELETE_CONFIRMATION_INTERNAL/,
   // raw JWTs (no token may be compiled into a browser chunk)
   /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}/,
 ];

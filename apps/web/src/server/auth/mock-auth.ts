@@ -74,7 +74,8 @@ export class MockAuthGateway implements AuthGateway {
     }
   }
   private claims(email: string, method: Claims["method"], purpose: Claims["purpose"], ttl: number): Claims {
-    return { sub: mockUserId(email), email: email.toLowerCase(), method, purpose, exp: Math.floor(this.clock() / 1000) + ttl };
+    // Nonce: two codes for the same email in the same second must be distinct single-use tokens.
+    return { sub: mockUserId(email), email: email.toLowerCase(), method, purpose, exp: Math.floor(this.clock() / 1000) + ttl, jti: randomBytes(9).toString("base64url") };
   }
   private startSession(c: Claims): VerifiedUser {
     const s = this.sign({ ...c, purpose: "session", exp: Math.floor(this.clock() / 1000) + SESSION_TTL_S, jti: randomBytes(12).toString("base64url") });

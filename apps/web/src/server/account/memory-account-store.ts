@@ -57,6 +57,16 @@ export class MemoryAccountStore implements AccountStore {
   allPendingTenants(): string[] {
     return [...new Set([...this.outbox.values()].filter((i) => i.status === "PENDING").map((i) => i.tenantId))];
   }
+  /** Account deletion (in-process stores): remove every row owned by the tenant, audit included. */
+  purgeTenant(tenantId: string): number {
+    let n = 0;
+    for (const m of [this.policies, this.prefs] as Map<string, unknown>[]) if (m.delete(tenantId)) n++;
+    for (const m of [this.verdicts, this.outbox, this.audit] as Map<string, { tenantId: string }>[]) {
+      for (const [k, v] of m) if (v.tenantId === tenantId && m.delete(k)) n++;
+    }
+    if (n) this.changed();
+    return n;
+  }
   /** Infrastructure view (in-process notification worker only). */
   allOutbox(): OutboxItem[] {
     return [...this.outbox.values()];

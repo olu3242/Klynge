@@ -67,8 +67,17 @@ export class MemorySessionStore implements SessionStore {
     this.changed();
   }
   /** Infrastructure view for operator monitoring (in-process stores only). Never served to users. */
-  infrastructureSnapshot(): { records: DecisionRecord[]; runtime: (RuntimeState & { tenantId: string })[]; alerts: (StateAlert & { tenantId: string })[] } {
-    return { records: [...this.records.values()], runtime: [...this.runtime.values()], alerts: [...this.alerts.values()] };
+  infrastructureSnapshot(): { records: DecisionRecord[]; runtime: (RuntimeState & { tenantId: string })[]; alerts: (StateAlert & { tenantId: string })[]; sessions: StoredSession[]; journal: JournalEntry[] } {
+    return { records: [...this.records.values()], runtime: [...this.runtime.values()], alerts: [...this.alerts.values()], sessions: [...this.sessions.values()], journal: [...this.journal.values()] };
+  }
+  /** Account deletion (in-process stores): remove every row owned by the tenant. */
+  purgeTenant(tenantId: string): number {
+    let n = 0;
+    for (const m of [this.sessions, this.records, this.alerts, this.journal, this.runtime] as Map<string, { tenantId: string }>[]) {
+      for (const [k, v] of m) if (v.tenantId === tenantId && m.delete(k)) n++;
+    }
+    if (n) this.changed();
+    return n;
   }
   /** Deterministic recovery: drop a corrupted runtime cursor (the next verified evaluation rebuilds it idempotently). */
   quarantineRuntimeState(tenantId: string, runtimeId: string): boolean {
@@ -95,5 +104,11 @@ export class MemoryImageStore implements ImageStore {
   purgeSession(t: string, s: string) {
     const prefix = `${t}\u0000${s}\u0000`;
     for (const key of [...this.images.keys()]) if (key.startsWith(prefix)) this.images.delete(key);
+  }
+  /** Account deletion: drop every processed image held for the tenant. */
+  purgeTenant(t: string): number {
+    let n = 0;
+    for (const key of [...this.images.keys()]) if (key.startsWith(`${t}\u0000`) && this.images.delete(key)) n++;
+    return n;
   }
 }

@@ -17,6 +17,9 @@ import { consoleTelemetrySink } from "./telemetry.ts";
 import { FileAccountStore, MemoryAccountStore } from "./account/memory-account-store.ts";
 import { SupabaseAccountStore } from "./account/supabase-account-store.ts";
 import type { AccountStore } from "./account/types.ts";
+import { FilePilotStore, MemoryPilotStore } from "./pilot/memory-pilot-store.ts";
+import { SupabasePilotStore } from "./pilot/supabase-pilot-store.ts";
+import type { PilotStore } from "./pilot/types.ts";
 import { MockEmailProvider, ResendEmailProvider } from "./notifications/email.ts";
 import type { EmailProvider } from "./notifications/email.ts";
 import type { TelemetrySink } from "./telemetry.ts";
@@ -37,6 +40,8 @@ interface ProcessDeps {
   storeMode: StoreMode;
   /** Shared account store for memory/file modes (null for supabase: per-request user-bound store). */
   account: MemoryAccountStore | null;
+  /** Shared pilot store for memory/file modes (null for supabase: per-request user-bound store). */
+  pilot: MemoryPilotStore | null;
   email: EmailProvider | null;
 }
 
@@ -62,6 +67,7 @@ export function processDeps(): ProcessDeps {
     market: marketDataFromEnv(env),
     storeMode: mode,
     account: mode === "memory" ? new MemoryAccountStore() : mode === "file" ? new FileAccountStore(path.resolve(env.KLYNGE_ACCOUNT_STORE_FILE ?? ".klynge/account.json")) : null,
+    pilot: mode === "memory" ? new MemoryPilotStore() : mode === "file" ? new FilePilotStore(path.resolve(env.KLYNGE_PILOT_STORE_FILE ?? ".klynge/pilot.json")) : null,
     email: emailFromEnv(env),
   };
   return proc;
@@ -94,7 +100,9 @@ export function depsFor(identity: Identity, gateway: AuthGateway, headers?: Head
   const market = p.market && scenario ? withScenario(p.market, scenario) : p.market;
   let account: AccountStore | null = null;
   if (identity.kind === "USER") account = p.storeMode === "supabase" ? new SupabaseAccountStore((gateway as SupabaseAuthGateway).client, identity.user.id) : p.account;
-  return { store, images: p.images, extractor: p.extractor, limiter: p.limiter, telemetry: p.telemetry, market, account, email: identity.kind === "USER" ? p.email : null };
+  let pilot: PilotStore | null = null;
+  if (identity.kind === "USER") pilot = p.storeMode === "supabase" ? new SupabasePilotStore((gateway as SupabaseAuthGateway).client, identity.user.id) : p.pilot;
+  return { store, images: p.images, extractor: p.extractor, limiter: p.limiter, telemetry: p.telemetry, market, account, pilot, email: identity.kind === "USER" ? p.email : null };
 }
 
 /** Evaluation clock. A header override exists ONLY in test mode (e2e); production always uses wall time. */

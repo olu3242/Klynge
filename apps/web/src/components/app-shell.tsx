@@ -7,7 +7,7 @@ export interface ShellAccount {
   operator?: boolean;
 }
 
-export function AppShell({ children, active, account }: { children: ReactNode; active: "workspace" | "history" | "sign-in" | "settings" | "status" | "ops"; account?: ShellAccount }) {
+export function AppShell({ children, active, account }: { children: ReactNode; active: "workspace" | "history" | "sign-in" | "settings" | "status" | "ops" | "pilot"; account?: ShellAccount }) {
   const link = (href: string, label: string, key: string) => (
     <a href={href} aria-current={active === key ? "page" : undefined} className={active === key ? "text-k-text" : "text-k-secondary hover:text-k-text"}>
       {label}

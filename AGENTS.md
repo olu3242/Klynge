@@ -10,7 +10,7 @@ Klynge is NOT a brokerage, an investment adviser, a guaranteed signal service, o
 |---|---|---|
 | `index.html`, `styles/`, `js/`, `public/` | PUBLIC | Landing page + brand assets → `dist/` |
 | `src/brand/tokens.json` | source of truth | Design tokens → `npm run brand` regenerates `styles/tokens.css`, SVG/PNG assets, kit, zip, manifest |
-| `src/klynge/` | INTERNAL | Deterministic engine: market truth, setup, MTF, options, visual intake, providers + DATA runtime, exchange calendars, datasets, calibration, backtests, user policies, CME futures contracts, empirical evaluation (`pilot-readiness-v1`, 0.7.0) |
+| `src/klynge/` | INTERNAL | Deterministic engine: market truth, setup, MTF, options, visual intake, providers + DATA runtime, exchange calendars, datasets, calibration, backtests, user policies, CME futures contracts, empirical evaluation (`pilot-operations-v1`, 0.8.0) |
 | `apps/web/` | PRODUCT | Next.js App Router workspace: Supabase Auth, anonymous trial, chart intake, confirmation, VISUAL→DATA handoff, persistence (RLS), journal, alerts |
 | `docs/architecture/`, `docs/policies/` | INTERNAL | Engine spec, public/product/internal boundary |
 | `scripts/` | tooling | build, serve, brand pipeline, boundary scan, QA |
@@ -20,7 +20,7 @@ Klynge is NOT a brokerage, an investment adviser, a guaranteed signal service, o
 `npm run build` (site → `dist/`, engine → `build/engine/`) · `npm run qa` (Playwright landing QA) · `npm run check` (all).
 App (`cd apps/web`): `npm run typecheck` · `npm run lint` · `npm test` · `npm run build` · `npm run bundle:check` · `npm run e2e` · `npm run check` (all).
 Root shortcut: `npm run check:app`. RLS: `npm run test:rls` (local PostgreSQL, offline) · `npm run rls:hosted -- --confirm` (manual, after a deliberate migration).
-Operator (manual, never CI): `npm run readiness:hosted` · `npm run worker:notifications` · `scripts/history-ingest.ts` · `scripts/calibrate.ts`. Runbooks: `docs/runbooks/`.
+Operator (manual, never CI): `npm run readiness:hosted` · `npm run worker:notifications` · `npm run pilot:admin` · `npm run release:check` · `scripts/history-ingest.ts` · `scripts/calibrate.ts`. Runbooks: `docs/runbooks/`. Releases: `releases/`, `docs/release/governance.md`.
 
 ## Authority hierarchy (absolute)
 ```
@@ -115,6 +115,23 @@ Non-negotiable (all earlier rules still apply):
 6. Hosted migrations, hosted certification and paid provider calls each require explicit, separate approval; a
    blocked environment is reported as BLOCKED, never as passing.
 Spec: `docs/architecture/pilot-readiness.md` · Certification: `docs/certification/pilot-readiness-v1.md`.
+
+## Constitution amendment — pilot operations (0.8.0)
+Non-negotiable (all earlier rules still apply):
+1. Public access stays restricted until release authorization: production is invite-only unless
+   `KLYNGE_RELEASE_AUTHORIZED=general-availability`. Durable features need an ACTIVE enrollment; a user can only
+   activate their OWN invite with a versioned risk acknowledgement and consent. Suspension/completion are operator actions.
+2. Pilot evidence is a read-only projection of immutable records: screenshots are never verified OHLCV, synthetic
+   fixtures are never evidence, and the ledger carries no prices (vendor licensing).
+3. Feedback is USER_REPORTED and is triaged separately from verified defects. Feedback, analytics and operator actions
+   can never create, edit or upgrade a decision, and never change production policy (source-scan enforced).
+4. User satisfaction is never treated as predictive accuracy; no profitability claims.
+5. Operator actions are authorized (server-derived operator), audited (hashed operator refs, no PII) and isolated from
+   deterministic decisions. Privacy rights (export, deletion) hold even when pilot access is suspended.
+6. Releases are governed by manifests: deterministic policy changes need a named human approval, RISK_POLICY sign-off
+   and a new rule version; deployment and each migration are authorized separately; bots never approve.
+Spec: `docs/architecture/pilot-operations.md` · Certification: `docs/certification/pilot-operations-v1.md` ·
+Security: `docs/security/findings-register.md`.
 
 ## Canonical agents
 | Name | Identifier |

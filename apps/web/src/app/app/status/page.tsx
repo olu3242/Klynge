@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
-import { requestContext } from "@/server/http";
+import { pageContext } from "@/server/http";
 import { clockFrom } from "@/server/runtime";
 import { statusReport } from "@/server/status";
 
@@ -12,11 +12,11 @@ export const dynamic = "force-dynamic";
 const iso = (t: number | null) => (t ? new Date(t).toISOString().replace(".000Z", "Z") : "—");
 
 export default async function StatusPage() {
-  const ctx = await requestContext();
+  const ctx = await pageContext("/app/status");
   if (ctx.identity.kind !== "USER") redirect(`/sign-in?next=${encodeURIComponent("/app/status")}`);
   const s = await statusReport(ctx.deps.store, ctx.deps.account, ctx.deps.market, ctx.identity.tenantId, clockFrom(await headers()));
   return (
-    <AppShell active="status" account={{ email: ctx.identity.user.email, authEnabled: true }}>
+    <AppShell active="status" account={{ email: ctx.identity.user.email, authEnabled: true, operator: ctx.pilot.operator }}>
       <h1 className="text-3xl font-extrabold tracking-tight">Status</h1>
       <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <Card aria-labelledby="provider-title" data-testid="status-provider">
