@@ -11,6 +11,17 @@ export default tseslint.config(
     },
   },
   {
+    // Layering: core engine layers never depend on downstream consumers (options, replay, pipeline).
+    files: ["src/klynge/{domain,data-quality,indicators,structure,engine,regime,policies,levels,price-action,confirmation,risk,triggers,timeframe}/**/*.ts"],
+    ignores: ["src/**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [{ group: ["../options/*", "../replay/*", "../pipeline/*", "../agents/*"], message: "Core engine layers must not import downstream consumers (options/replay/pipeline/agents)." }] },
+      ],
+    },
+  },
+  {
     // page.evaluate() callbacks run in the browser.
     files: ["scripts/qa/**/*.mjs"],
     languageOptions: { globals: { getComputedStyle: "readonly" } },
@@ -35,5 +46,10 @@ export default tseslint.config(
         { selector: "NewExpression[callee.name='Date'][arguments.length=0]", message: "Pass `now` explicitly." },
       ],
     },
+  },
+  {
+    // Tests may assert presence with `!` (a wrong assumption fails the test). Engine code keeps the strict rule.
+    files: ["src/**/*.test.ts"],
+    rules: { "@typescript-eslint/no-non-null-assertion": "off" },
   },
 );

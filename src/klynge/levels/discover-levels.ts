@@ -17,6 +17,8 @@ export interface LevelDiscoveryInput {
   swingLookback?: number;
   /** Pre-computed swings for `session.candles` (optimization; must equal findSwingPoints output). */
   swings?: readonly SwingPoint[];
+  /** ATR known at each session candle (e.g. warmed up by prior sessions). Defaults to session-only ATR. */
+  atrAt?: readonly (number | null)[];
 }
 
 const TYPE_ORDER: readonly LevelType[] = ["PRIOR_SESSION_HIGH", "PRIOR_SESSION_LOW", "SESSION_HIGH", "SESSION_LOW", "RESISTANCE", "SUPPORT", "SWING_HIGH", "SWING_LOW", "VWAP"];
@@ -53,7 +55,7 @@ export function discoverLevels(input: LevelDiscoveryInput): PriceLevel[] {
   const asOf = Math.min(input.asOfIndex ?? session.candles.length - 1, session.candles.length - 1);
   const known = session.candles.slice(0, asOf + 1);
   const levels: PriceLevel[] = [];
-  const atr14 = known.length > ATR_PERIOD ? atr(known, ATR_PERIOD) : null;
+  const atr14 = input.atrAt ? (asOf >= 0 ? (input.atrAt[asOf] ?? null) : null) : known.length > ATR_PERIOD ? atr(known, ATR_PERIOD) : null;
   const tolerance = atr14 === null ? null : atr14 * policy.atrToleranceMultiplier;
 
   const push = (type: LevelType, price: number, createdAt: number, fields: Partial<PriceLevel> & Pick<PriceLevel, "strength" | "touches" | "confirmed" | "source">) => {

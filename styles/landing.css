@@ -191,6 +191,8 @@ h1 span { display: block; color: var(--klynge-lime); }
 .disclosure { margin-top: 40px; padding: 24px 28px; border-radius: var(--klynge-radius-lg); border: 1px solid rgba(245, 166, 35, .35); background: rgba(245, 166, 35, .05); }
 .disclosure h3 { font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--klynge-warning); margin-bottom: 8px; }
 .disclosure p { color: var(--klynge-text-secondary); font-size: 15px; }
+.disclosure p + p { margin-top: 10px; }
+.disclosure-options strong { color: var(--klynge-text); }
 
 /* FAQ */
 .faq-grid { display: grid; gap: 8px; }

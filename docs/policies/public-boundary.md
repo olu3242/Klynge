@@ -13,6 +13,9 @@ Rules:
    - indicator names, thresholds, the instruments used for regime, the skew policy, permission internals
    - level clustering, ATR tolerances, break thresholds, acceptance closes, retest tolerance, minimum R:R
    - the stop/entry algorithm, target selection and state transitions
+   - timeframe roles and conflict rules, replay/backtest and calibration internals, no-lookahead implementation
+   - DTE, spread, volume/OI and delta filters, the options ranking formula
+2a. The options risk notice must appear in the visible Risk section (not footer-only). The scanner requires it.
 2. `dist/` is built from an allowlist (`scripts/build.mjs`). Engine source is compiled to `build/engine/` and is never shipped to the public site.
 3. Public pages never link to `docs/` or `src/`.
 4. Banned marketing language includes: guaranteed, safe trade, can't miss, buy now, sell now, guaranteed profit, sure win, beat the market, never lose.

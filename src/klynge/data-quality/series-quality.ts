@@ -13,6 +13,8 @@ export interface DataQualityContext {
   /** If provided, every candle must match. */
   expectedSymbol?: string;
   expectedTimeframe?: Timeframe;
+  /** Validated prior-session candles that count toward history sufficiency (multi-session warm-up). */
+  historyCandles?: number;
 }
 
 class Collector {
@@ -108,9 +110,10 @@ export function assessSeriesQuality(candles: readonly Candle[], ctx: DataQuality
 
   // 4. History.
   const required = effectiveMinimumCandles(policy);
-  if (candles.length < required) {
+  const available = candles.length + (ctx.historyCandles ?? 0);
+  if (available < required) {
     state.sufficientHistory = false;
-    c.flag("INSUFFICIENT_HISTORY", `${candles.length} candles available, ${required} required`);
+    c.flag("INSUFFICIENT_HISTORY", `${available} candles available, ${required} required`);
   }
 
   // 5. Closed-candle (no-lookahead) and staleness against the explicit clock.

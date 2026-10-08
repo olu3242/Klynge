@@ -110,6 +110,6 @@ Defaults:
 - `checkAgentSetupClaim` rejects agent claims that differ from the engine (decision, price-action state, confirmation or risk). It also rejects any directional state that fails `validateDecisionState`.
 
 ## Known gaps (v1)
-- Single timeframe only: the target timeframe must equal the market-context timeframe.
+- Resolved in `mtf-options-v1`: multi-timeframe context and multi-session warm-up (see `multi-timeframe.md`). The target timeframe must still equal the market-context timeframe, which the pipeline guarantees by deriving both from the SETUP role.
 - A terminal lifecycle stays the decision until a fresh break creates a new one. This is conservative: a fresh level forming meanwhile still reports INVALIDATED.
-- The engine keeps no state between evaluations. Ending a lifecycle on a context change depends on the caller passing `previous`.
+- The engine keeps no state between evaluations. Ending a lifecycle on a context change depends on the caller passing `previous`. Replay does this automatically; live use still needs persistence (Batches 31–40).

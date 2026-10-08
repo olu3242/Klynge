@@ -6,6 +6,11 @@ Klynge is a market-risk analysis and educational decision-support platform. Klyn
 ## Compact
 Klynge is not financial advice. Trading involves substantial risk and you may lose 100% of the capital committed to a trade.
 
+## Options (mandatory on every options surface; never footer-only)
+Klynge is not financial advice. Options involve substantial risk and may expire worthless. A long option position may lose 100% of the premium paid.
+
+Contract wording: "Eligible contract", "Contract candidate", "Liquidity acceptable", "Risk policy satisfied". Never "Best option", "Guaranteed winner", "Highest-profit contract".
+
 ## Signal card (product)
 Klynge states describe whether conditions are met. They are not recommendations. You may lose 100% of capital committed.
 

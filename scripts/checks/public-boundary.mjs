@@ -36,6 +36,14 @@ const IP_PATTERNS = [
   [/next (valid |meaningful )?(resistance|support)|target[\s-]*selection/i, "target-selection mechanics"],
   [/state[\s-]*machine|state[\s-]*transition|PriceActionState|LEGAL_TRANSITIONS|setup-engine-v\d/i, "state-transition logic"],
   [/minimumRewardRiskRatio|maximumStopAtr|requiredCloses|minimumCloseDistanceAtr|atrToleranceMultiplier|maximumFailureDistanceAtr|entryToleranceAtr|invalidationToleranceAtr|volumeProxySymbol/, "setup policy/config"],
+  // mtf-options-v1 internals
+  [/higher[\s-]*timeframe|multi[\s-]*timeframe|timeframe[\s-]*(bias|conflict|hierarchy|role|sync)|\bHTF\b|execution[\s-]*timeframe/i, "timeframe conflict rules"],
+  [/\bbacktest|calibrat|\breplay|look[\s-]*ahead|as[\s-]*of[\s-]*guard/i, "replay/calibration internals"],
+  [/\bDTE\b|days[\s-]*to[\s-]*expir/i, "DTE thresholds"],
+  [/bid[\s/-]*ask|spread[\s-]*(percent|%|threshold|band)/i, "spread thresholds"],
+  [/\bdelta\b|\bgamma\b|\btheta\b|\bvega\b|open[\s-]*interest|implied[\s-]*volatility/i, "options filters / greeks"],
+  [/(contract|option)s?[\s-]*ranking|ranking[\s-]*formula|liquidity[\s-]*(band|rule)/i, "options ranking formula"],
+  [/mtf-options-v\d|minimumDte|maximumDte|minimumOpenInterest|maximumPremiumAtRisk|maximumSpreadPercent|allowNeutralBias|requireExecutionConfirmation|maxAgeByRole/, "options/timeframe policy config"],
 ];
 
 /** Language Klynge never uses publicly. */
@@ -50,6 +58,7 @@ const BANNED = [
 ];
 
 const REQUIRED_IN_INDEX = [
+  "Options involve substantial risk and may expire worthless. A long option position may lose 100% of the premium paid.",
   "Klynge is not financial advice.",
   "Trading involves substantial risk and you may lose 100% of the capital committed to a trade.",
   "Klynge is a market-risk analysis and educational decision-support platform. Klynge does not provide investment, financial, legal, tax, or trading advice. Trading stocks, options, futures, leveraged products, and other financial instruments involves substantial risk. Users may lose some or all capital committed to a trade, including 100%. Klynge evaluates market conditions and risk but cannot predict or guarantee future outcomes. Users remain responsible for their own decisions.",

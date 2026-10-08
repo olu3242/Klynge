@@ -26,6 +26,12 @@ export function validateDecisionState(s: KlyngeDecisionState, policy: SetupPolic
   req(s.blockers.length === 0, "no blockers allowed");
   req(s.invalidationReasons.length === 0, "no invalidation allowed");
   req(s.setup !== undefined && s.setup.direction === (call ? "CALL" : "PUT"), "setup identity must match direction");
+  if (s.multiTimeframe) {
+    const m = s.multiTimeframe;
+    req(m.synchronized, "multi-timeframe context must be synchronized");
+    req(m.biasApproved && m.bias !== "CONFLICTED" && m.bias !== (call ? "BEARISH" : "BULLISH"), "higher-timeframe bias must not conflict");
+    req(m.executionConfirmed && m.executionDirection !== (call ? "BEARISH" : "BULLISH"), "execution timeframe must confirm");
+  }
   return v;
 }
 

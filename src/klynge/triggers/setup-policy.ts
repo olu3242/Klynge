@@ -2,7 +2,12 @@ import { assertValidLevelPolicy, DEFAULT_LEVEL_POLICY } from "../levels/types.ts
 import { DEFAULT_ACCEPTANCE_POLICY, DEFAULT_BREAK_POLICY, DEFAULT_RETEST_POLICY } from "../price-action/types.ts";
 import type { PriceActionPolicy } from "../price-action/types.ts";
 import { assertValidRiskPolicy, DEFAULT_RISK_POLICY } from "../risk/risk-engine.ts";
-import type { SetupPolicy } from "./types.ts";
+import type { MultiTimeframeSetupPolicy, SetupPolicy } from "./types.ts";
+
+export const DEFAULT_MULTI_TIMEFRAME_SETUP_POLICY: Readonly<MultiTimeframeSetupPolicy> = Object.freeze({
+  allowNeutralBias: true,
+  requireExecutionConfirmation: true,
+});
 
 export const DEFAULT_SETUP_POLICY: Readonly<SetupPolicy> = Object.freeze({
   levels: DEFAULT_LEVEL_POLICY,

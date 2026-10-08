@@ -13,3 +13,6 @@ export * from "./price-action/index.ts";
 export * from "./confirmation/index.ts";
 export * from "./risk/index.ts";
 export * from "./triggers/index.ts";
+export * from "./pipeline/index.ts";
+export * from "./options/index.ts";
+export * from "./replay/index.ts";

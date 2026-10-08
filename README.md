@@ -7,6 +7,9 @@ Risk-first market decision-support platform. This repository contains:
 - **Deterministic engine** (internal, `src/klynge/`):
   - Market truth: data quality → indicators → structure → technical state → SPX/MNQ regime (with an optional SPY/ES volume proxy) → trade permission.
   - Setup engine: levels → break → acceptance → retest → confirmation → risk → CALL_SETUP / PUT_SETUP / WAIT / BLOCKED / INVALIDATED.
+  - Multi-timeframe context: macro/structure bias gate and execution context, derived from one base feed.
+  - Replay with no-lookahead guards, plus report-only calibration.
+  - Options eligibility, strictly downstream of the underlying setup.
 
 ## Commands
 ```bash

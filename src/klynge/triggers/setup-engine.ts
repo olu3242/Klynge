@@ -23,8 +23,9 @@ import { evaluateRisk } from "../risk/risk-engine.ts";
 import type { RiskState } from "../risk/risk-engine.ts";
 import { findSwingPoints } from "../structure/swings.ts";
 import { validateDecisionState } from "./invariants.ts";
-import { assertValidSetupPolicy, DEFAULT_SETUP_POLICY, priceActionPolicyOf } from "./setup-policy.ts";
-import type { KlyngeDecision, KlyngeDecisionState, SetupIdentity, SetupPolicy, SetupProgress } from "./types.ts";
+import type { MultiTimeframeState } from "../timeframe/multi-timeframe.ts";
+import { assertValidSetupPolicy, DEFAULT_MULTI_TIMEFRAME_SETUP_POLICY, DEFAULT_SETUP_POLICY, priceActionPolicyOf } from "./setup-policy.ts";
+import type { DecisionMultiTimeframe, KlyngeDecision, KlyngeDecisionState, SetupIdentity, SetupPolicy, SetupProgress } from "./types.ts";
 
 export interface SetupEvaluationInput {
   /** Canonical market-truth snapshot (evaluateMarketTruth) for the same `now`. */
@@ -33,11 +34,18 @@ export interface SetupEvaluationInput {
   target: TradingSession;
   /** Completed prior session for the target (prior-session levels). */
   priorSession?: TradingSession;
+  /** Completed prior sessions for multi-session indicator warm-up of the target (levels stay session-scoped). */
+  targetHistory?: readonly TradingSession[];
   now: number;
   policy?: SetupPolicy;
   dataQualityPolicy?: DataQualityPolicy;
   /** The previous decision for this symbol/timeframe — used only to end lifecycles, never to enable one. */
   previous?: KlyngeDecisionState;
+  /**
+   * Optional multi-timeframe context (buildMultiTimeframeState, same symbol, same `now`, SETUP role = target TF).
+   * It can only gate (BLOCKED/INVALIDATED) or downgrade (CALL/PUT -> WAIT); it can never create a setup.
+   */
+  multiTimeframe?: MultiTimeframeState;
 }
 
 const fmt = (n: number) => n.toFixed(2);
@@ -82,12 +90,14 @@ interface Draft {
   invalidationReasons: string[];
   summary: string;
   invalidatesIf?: string[];
+  extraMissing?: string[];
   level?: PriceLevel;
   lifecycle?: PriceActionLifecycle;
   priceActionState?: PriceActionResult["state"];
   confirmation?: ConfirmationResult;
   risk?: RiskState;
   setup?: SetupIdentity;
+  multiTimeframe?: DecisionMultiTimeframe;
 }
 
 /**
@@ -103,6 +113,7 @@ export function evaluateSetup(input: SetupEvaluationInput): Readonly<KlyngeDecis
   const { marketTruth: mt, target, now } = input;
   const lastTs = target.candles.at(-1)?.timestamp ?? now;
   const prevActive = activePrevious(input.previous, target);
+  let mtfSummary: DecisionMultiTimeframe | undefined;
   const prev = input.previous;
   const prevSameSeries = prev !== undefined && prev.symbol === target.symbol && prev.timeframe === target.timeframe;
   const prevInvalidatedId = prevSameSeries && prev.decision === "INVALIDATED" ? prev.setup?.setupId : undefined;
@@ -127,9 +138,10 @@ export function evaluateSetup(input: SetupEvaluationInput): Readonly<KlyngeDecis
       progress: d.progress,
       ...(d.setup ? { setup: d.setup } : {}),
       transitions: d.lifecycle?.transitions ?? [],
+      ...(mtfSummary ? { multiTimeframe: mtfSummary } : {}),
       explanation: {
         summary: d.summary,
-        missing: d.decision === "INVALIDATED" ? [] : STAGES.filter(([k]) => !d.progress[k]).map(([, label]) => label),
+        missing: d.decision === "INVALIDATED" ? [] : [...STAGES.filter(([k]) => !d.progress[k]).map(([, label]) => label), ...(d.extraMissing ?? [])],
         invalidatesIf: d.invalidatesIf ?? [],
         riskBlockers: d.risk && !d.risk.allowed ? d.risk.reasons : [],
       },
@@ -158,7 +170,7 @@ export function evaluateSetup(input: SetupEvaluationInput): Readonly<KlyngeDecis
   const marketProgress: SetupProgress = { ...NO_PROGRESS, marketTruth: true };
 
   // 2. TARGET DATA QUALITY + TECHNICAL STATE (validated before any analysis).
-  const tech = buildTechnicalState(target, { now, policy: dqPolicy });
+  const tech = buildTechnicalState(target, { now, policy: dqPolicy, ...(input.targetHistory ? { history: input.targetHistory } : {}) });
   if (!tech.ok) {
     return gateLost([...tech.dataQuality.blockers], ["Target data quality failed", ...tech.dataQuality.reasons], "Data quality failure halted the active setup", "NEUTRAL", marketProgress);
   }
@@ -189,13 +201,49 @@ export function evaluateSetup(input: SetupEvaluationInput): Readonly<KlyngeDecis
   }
   const targetAligned = targetDirection === requiredSide;
 
+  // 3b. HIGHER-TIMEFRAME GATE (optional). Can only block / invalidate; never creates a setup.
+  const mtf = input.multiTimeframe;
+  const mtfPolicy = policy.multiTimeframe ?? DEFAULT_MULTI_TIMEFRAME_SETUP_POLICY;
+  if (mtf) {
+    const executionDirection = mtf.roles.find((r) => r.role === "EXECUTION")?.direction ?? "NEUTRAL";
+    const biasApproved = mtf.bias === requiredSide || (mtf.bias === "NEUTRAL" && mtfPolicy.allowNeutralBias);
+    mtfSummary = {
+      bias: mtf.bias,
+      synchronized: mtf.synchronized,
+      biasApproved,
+      executionDirection,
+      executionConfirmed: mtfPolicy.requireExecutionConfirmation ? executionDirection === requiredSide : executionDirection !== opposite,
+    };
+    if (mtf.symbol !== target.symbol || mtf.timeframes.setup !== target.timeframe || mtf.timestamp !== now) {
+      return gateLost(["INCONSISTENT_STATE"], ["Multi-timeframe context does not match this target, timeframe or clock"], "Multi-timeframe context changed against the active setup", targetDirection, marketProgress);
+    }
+    if (!mtf.synchronized) {
+      return gateLost(["UNSYNCHRONIZED_TIMEFRAMES", ...mtf.blockers], ["Multi-timeframe context is not synchronized", ...mtf.reasons], "Data quality failure halted the active setup", targetDirection, marketProgress);
+    }
+    if (mtf.bias === "CONFLICTED" || mtf.bias === opposite) {
+      const why = mtf.bias === "CONFLICTED" ? "Higher-timeframe context is conflicted" : "Higher-timeframe bias conflicts with the setup direction";
+      return gateLost(["HTF_CONFLICT"], [why], "Higher-timeframe bias turned against the active setup", targetDirection, marketProgress);
+    }
+    if (!biasApproved) {
+      return gateLost(["HTF_NOT_APPROVED"], ["Neutral higher-timeframe bias is not approved by policy"], "Higher-timeframe bias no longer supports the active setup", targetDirection, marketProgress);
+    }
+  }
+
   // 4. LEVELS (as-of each candle — no lookahead) + PRICE ACTION.
   const candles = target.candles;
   const n = candles.length;
   const swings = findSwingPoints(candles, policy.swingLookback);
-  const atrs = atrSeries(candles);
+  const historyCandles = (input.targetHistory ?? []).flatMap((h) => h.candles);
+  const atrs = atrSeries([...historyCandles, ...candles]).slice(historyCandles.length);
   const breakTypes = requiredSide === "BULLISH" ? RESISTANCE_TYPES : SUPPORT_TYPES;
-  const levelCtx = { session: target, policy: policy.levels, swingLookback: policy.swingLookback, swings, ...(prior ? { priorSession: prior } : {}) };
+  const levelCtx = {
+    session: target,
+    policy: policy.levels,
+    swingLookback: policy.swingLookback,
+    swings,
+    ...(prior ? { priorSession: prior } : {}),
+    ...(historyCandles.length > 0 ? { atrAt: atrs } : {}),
+  };
   const candidates = new Map<string, { level: PriceLevel; present: Set<number> }>();
   for (let i = 0; i < n; i++) {
     for (const level of discoverLevels({ ...levelCtx, asOfIndex: i - 1 })) {
@@ -308,6 +356,11 @@ export function evaluateSetup(input: SetupEvaluationInput): Readonly<KlyngeDecis
   const confirmedProgress = { ...progress, confirmation: true, risk: risk.allowed };
   if (!risk.allowed) {
     return finish({ ...common, decision: "BLOCKED", progress: confirmedProgress, reasons: ["Setup confirmed but risk is not permitted", ...risk.reasons], blockers: [...risk.blockers], invalidationReasons: [], summary: risk.reasons[0] ?? "Risk rejected", invalidatesIf, confirmation, risk });
+  }
+  // 6. EXECUTION CONTEXT (optional): may only downgrade a directional decision to WAIT.
+  if (mtfSummary && !mtfSummary.executionConfirmed) {
+    const why = mtfSummary.executionDirection === opposite ? "Execution timeframe opposes the setup; execution timing pending." : "Execution timeframe confirmation pending.";
+    return finish({ ...common, decision: "WAIT", progress: confirmedProgress, reasons: [why], blockers: [], invalidationReasons: [], summary: why, invalidatesIf, extraMissing: ["Execution timeframe confirmation"], confirmation, risk });
   }
   const decision: KlyngeDecision = requiredSide === "BULLISH" ? "CALL_SETUP" : "PUT_SETUP";
   return finish({

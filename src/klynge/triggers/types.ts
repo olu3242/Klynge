@@ -1,4 +1,5 @@
 import type { Direction, MarketRegime, Timeframe } from "../domain/types.ts";
+import type { HigherTimeframeBias } from "../timeframe/bias.ts";
 import type { ConfirmationQuality, ConfirmationState } from "../confirmation/confirmation.ts";
 import type { DecisionProvenance } from "../engine/version.ts";
 import type { LevelPolicy, PriceLevel } from "../levels/types.ts";
@@ -7,7 +8,31 @@ import type { RiskPolicy, RiskState } from "../risk/risk-engine.ts";
 
 export type KlyngeDecision = "CALL_SETUP" | "PUT_SETUP" | "WAIT" | "BLOCKED" | "INVALIDATED";
 
-export type SetupBlockerCode = "TARGET_REGIME_CONFLICT" | "PRIOR_SESSION_INVALID" | "MULTI_TIMEFRAME_UNSUPPORTED";
+export type SetupBlockerCode =
+  | "TARGET_REGIME_CONFLICT"
+  | "PRIOR_SESSION_INVALID"
+  | "MULTI_TIMEFRAME_UNSUPPORTED"
+  | "HTF_CONFLICT"
+  | "HTF_NOT_APPROVED"
+  | "UNSYNCHRONIZED_TIMEFRAMES";
+
+/** Multi-timeframe gate summary carried on the decision (present only when MTF context was supplied). */
+export interface DecisionMultiTimeframe {
+  bias: HigherTimeframeBias;
+  synchronized: boolean;
+  /** Bias aligned with the setup side, or NEUTRAL approved by policy. */
+  biasApproved: boolean;
+  executionDirection: Direction;
+  /** Execution timeframe satisfies the policy (aligned, or non-conflicting when not required). */
+  executionConfirmed: boolean;
+}
+
+export interface MultiTimeframeSetupPolicy {
+  /** NEUTRAL higher-timeframe bias may proceed (PROVISIONAL default true). CONFLICTED / opposite never may. */
+  allowNeutralBias: boolean;
+  /** Execution timeframe direction must equal the setup side (true) or merely not oppose it (false). */
+  requireExecutionConfirmation: boolean;
+}
 
 export interface SetupProgress {
   marketTruth: boolean;
@@ -73,6 +98,7 @@ export interface KlyngeDecisionState {
   progress: SetupProgress;
   setup?: SetupIdentity;
   transitions: PriceActionTransition[];
+  multiTimeframe?: DecisionMultiTimeframe;
   explanation: SetupExplanation;
   provenance: DecisionProvenance;
 }
@@ -84,4 +110,5 @@ export interface SetupPolicy {
   retest: RetestPolicy;
   risk: RiskPolicy;
   swingLookback: number;
+  multiTimeframe?: MultiTimeframeSetupPolicy;
 }

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { KLYNGE_ENGINE_VERSION, KLYNGE_RULE_HISTORY, KLYNGE_RULE_VERSION } from "../engine/version.ts";
 import { BULL_BARS, scenario } from "../setup-test-fixtures.ts";
 import { makeSession } from "../test-fixtures.ts";
 import { isDirectionalDecision, validateDecisionState } from "./invariants.ts";
@@ -147,10 +148,11 @@ describe("trigger engine — determinism & integrity", () => {
     }, TypeError);
     assert.ok(Object.isFrozen(r.risk));
   });
-  it("carries setup-engine provenance", () => {
+  it("carries current engine provenance (setup-engine-v1 preserved in history)", () => {
     const r = evaluate();
-    assert.equal(r.provenance.ruleVersion, "setup-engine-v1");
-    assert.equal(r.provenance.engineVersion, "0.2.0");
+    assert.equal(r.provenance.ruleVersion, KLYNGE_RULE_VERSION);
+    assert.equal(r.provenance.engineVersion, KLYNGE_ENGINE_VERSION);
+    assert.ok(KLYNGE_RULE_HISTORY.some((h) => h.ruleVersion === "setup-engine-v1" && h.engineVersion === "0.2.0"));
   });
   it("does not mutate inputs", () => {
     const s = scenario();

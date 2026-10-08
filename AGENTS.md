@@ -31,6 +31,13 @@ Agents **may not**:
 
 Agent claims are validated with `checkAgentClaim()` (market truth) and `checkAgentSetupClaim()` (setup state). Engine outputs are deep-frozen.
 Agents may consume `PriceLevel`, `PriceActionState`, `ConfirmationState`, `RiskState` and `KlyngeDecisionState`. They may never turn WAIT into CALL_SETUP/PUT_SETUP, BLOCKED into a setup, or INVALIDATED back into an active state.
+Agents may also consume `MultiTimeframeState`, `ReplayFrame`, `ReplayOutcome` and `OptionsDecisionState`, and may explain them. They may NOT:
+- change the higher-timeframe bias or override a conflict
+- modify replay results
+- bypass liquidity rules or turn rejected contracts into eligible ones
+- create option eligibility without a CALL_SETUP or PUT_SETUP
+
+These are checked by `checkAgentBiasClaim`, `checkAgentReplayClaim` and `checkAgentOptionsClaim`.
 
 ## Canonical agents
 | Name | Identifier |
@@ -57,7 +64,10 @@ Defined in `src/klynge/agents/registry.ts`. Do not rename or add agents without 
 5. Never weaken a test or a rule to get green checks.
 6. `evaluateSetup()` is the only setup decision. Regime is permission to continue analysis, never a setup. CALL_SETUP and PUT_SETUP require every stage plus `validateDecisionState()`.
 7. Volume proxies (SPY/ES) supply volume context only. They never replace SPX price, EMA, structure or direction.
-8. Not yet implemented, and must not be faked: multi-timeframe, options selection, replay, journal, brokerage, live alerts, autonomous trading.
+8. Options are strictly downstream. With no underlying setup there is no options eligibility, and option data never creates, upgrades or invalidates a setup. ESLint layering forbids core layers from importing `options/`, `replay/`, `pipeline/` or `agents/`.
+9. Higher-timeframe context and execution context may only block, invalidate or downgrade. They never create a setup.
+10. Replay and calibration are evaluation-only. They never change production defaults, and synthetic results must never be presented as market evidence.
+11. Not yet implemented, and must not be faked: journal, brokerage, live alerts, data providers, persistence, autonomous trading.
 
 ## Public page rules
 1. No engine internals on public surfaces (see `docs/policies/public-boundary.md`). `npm run lint` fails on leaks.

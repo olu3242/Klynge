@@ -22,6 +22,11 @@ export interface MarketTruthInput {
   now: number;
   policy?: DataQualityPolicy;
   contextPolicy?: MarketContextPolicy;
+  /** Optional completed prior sessions for multi-session indicator warm-up (same timeframe as each leg). */
+  spxHistory?: readonly TradingSession[];
+  mnqHistory?: readonly TradingSession[];
+  /** Proxy history aligned 1:1 with `spxHistory` (required when both proxy and SPX history are supplied). */
+  volumeProxyHistory?: readonly TradingSession[];
 }
 
 export interface MarketContextProvenance {
@@ -53,6 +58,8 @@ export function evaluateMarketTruth(input: MarketTruthInput): Readonly<MarketTru
   const context = input.contextPolicy ?? DEFAULT_MARKET_CONTEXT_POLICY;
   assertValidMarketContextPolicy(context);
   const ctx = { now: input.now, policy };
+  const spxCtx = { ...ctx, ...(input.spxHistory ? { history: input.spxHistory } : {}) };
+  const mnqCtx = { ...ctx, ...(input.mnqHistory ? { history: input.mnqHistory } : {}) };
 
   // Volume proxy is permitted only when the policy names it and the supplied session matches.
   let proxyViolation: DataQualityState | null = null;
@@ -69,11 +76,16 @@ export function evaluateMarketTruth(input: MarketTruthInput): Readonly<MarketTru
       ? roleFailure(dataQualityFailure("MIXED_SERIES", `PRICE_STRUCTURE leg must be ${context.broadMarketSymbol}, got ${input.spx.symbol}`))
       : proxyViolation
         ? roleFailure(proxyViolation)
-        : buildTechnicalState(input.spx, useProxy && input.volumeProxy ? { ...ctx, volumeProxy: input.volumeProxy } : ctx);
+        : buildTechnicalState(
+            input.spx,
+            useProxy && input.volumeProxy
+              ? { ...spxCtx, volumeProxy: input.volumeProxy, ...(input.volumeProxyHistory ? { volumeProxyHistory: input.volumeProxyHistory } : {}) }
+              : spxCtx,
+          );
   const mnq =
     input.mnq.symbol !== context.technologyConfirmationSymbol
       ? roleFailure(dataQualityFailure("MIXED_SERIES", `RISK_CONFIRMATION leg must be ${context.technologyConfirmationSymbol}, got ${input.mnq.symbol}`))
-      : buildTechnicalState(input.mnq, ctx);
+      : buildTechnicalState(input.mnq, mnqCtx);
 
   let regime: RegimeState;
   let dataQuality: DataQualityState;
