@@ -1,19 +1,20 @@
-import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
-import { TENANT_COOKIE } from "@/server/http";
-import { runtimeDeps } from "@/server/runtime";
+import { requestContext } from "@/server/http";
 import { history } from "@/server/workspace";
 
 export const dynamic = "force-dynamic";
 
 export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ symbol?: string }> }) {
   const { symbol } = await searchParams;
-  const jar = await cookies();
-  const rows = await history(runtimeDeps(), jar.get(TENANT_COOKIE)?.value ?? "anonymous", symbol?.toUpperCase() || undefined);
+  const ctx = await requestContext();
+  // Protected: history is tenant-owned durable data — a verified user only.
+  if (ctx.identity.kind !== "USER") redirect(`/sign-in?next=${encodeURIComponent("/app/history")}`);
+  const rows = await history(ctx.deps, ctx.identity.tenantId, symbol?.toUpperCase() || undefined);
   return (
-    <AppShell active="history">
+    <AppShell active="history" account={{ email: ctx.identity.user.email, authEnabled: true }}>
       <h1 className="text-3xl font-extrabold tracking-tight">History{symbol ? ` · ${symbol.toUpperCase()}` : ""}</h1>
       <form className="mt-4 flex max-w-sm gap-2" action="/app/history">
         <label htmlFor="symbol" className="sr-only">
@@ -36,6 +37,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                 <th>State</th>
                 <th>Permission</th>
                 <th>Notes</th>
+                <th>Origin</th>
               </tr>
             </thead>
             <tbody>
@@ -51,6 +53,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                   <td>{r.state}</td>
                   <td>{r.permission}</td>
                   <td>{r.notes}</td>
+                  <td>{r.origin === "ANONYMOUS_TRIAL" ? "Saved trial" : "Account"}</td>
                 </tr>
               ))}
             </tbody>

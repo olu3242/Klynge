@@ -14,10 +14,13 @@
     "corpus:build": "node --conditions=react-server scripts/build-corpus.ts",
     "corpus:record": "node --conditions=react-server scripts/record-corpus.ts --live",
     "e2e": "node scripts/e2e.mjs",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run bundle:check && npm run e2e"
+    "check": "npm run typecheck && npm run lint && npm test && npm run test:rls && npm run build && npm run bundle:check && npm run e2e",
+    "test:rls": "node --test --test-timeout=120000 \"test/rls/*.test.ts\"",
+    "rls:hosted": "node --conditions=react-server scripts/rls-hosted.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.0",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -34,10 +37,12 @@
     "@next/eslint-plugin-next": "^15.5.27",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "pg": "^8.23.1",
     "playwright-core": "^1.56.1",
     "tailwindcss": "^4.3.3",
     "typescript": "5.9",

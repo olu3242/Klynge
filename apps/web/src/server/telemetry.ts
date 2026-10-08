@@ -1,6 +1,16 @@
 import { createHash } from "node:crypto";
 
-export type TelemetryEventName = "chart.intake" | "chart.extraction" | "chart.confirmation" | "snapshot.built" | "decision.evaluated" | "rate.limited";
+export type TelemetryEventName =
+  | "chart.intake"
+  | "chart.extraction"
+  | "chart.confirmation"
+  | "snapshot.built"
+  | "decision.evaluated"
+  | "rate.limited"
+  | "auth.sign_in"
+  | "auth.sign_out"
+  | "session.promoted"
+  | "data.cycle";
 
 /** Allow-listed, non-sensitive attributes. Anything else (image bytes, notes, prices, raw ids) is dropped. */
 const ALLOWED: Record<TelemetryEventName, readonly string[]> = {
@@ -10,6 +20,10 @@ const ALLOWED: Record<TelemetryEventName, readonly string[]> = {
   "snapshot.built": ["evidenceMode", "charts"],
   "decision.evaluated": ["evidenceMode", "label", "permission", "decision", "blockers"],
   "rate.limited": ["retryAfterMs"],
+  "auth.sign_in": ["method", "outcome"],
+  "auth.sign_out": [],
+  "session.promoted": ["charts"],
+  "data.cycle": ["kind", "provider", "permission", "decision"],
 };
 
 export interface TelemetryEvent {

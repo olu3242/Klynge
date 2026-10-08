@@ -11,8 +11,10 @@ Risk-first market decision-support platform. This repository contains:
   - Replay with no-lookahead guards, plus report-only calibration.
   - Options eligibility, strictly downstream of the underlying setup.
   - Visual intake: chart observations with per-field provenance → visual context (WAIT/BLOCKED only); DATA mode required for setups.
-- **Product app** (`apps/web`, Next.js): upload charts, review what was observed / not verified / missing, confirm fields,
-  import OHLCV for full analysis, journal, history and in-app alerts. See `docs/architecture/visual-intake.md`.
+- **Product app** (`apps/web`, Next.js): Supabase Auth (Google OAuth + email magic link) with an anonymous visual trial;
+  upload charts, review what was observed / not verified / missing, confirm fields, connect verified market data
+  (VISUAL → DATA handoff), import OHLCV, journal, history and in-app alerts, persisted under RLS.
+  See `docs/architecture/visual-intake.md` and `docs/architecture/auth-live-data.md`.
 
 ## Commands
 ```bash

@@ -62,6 +62,47 @@ export interface DataDecisionView {
   invalidatesIf: string[];
   risk: { allowed: boolean; level: string; entryZone: string | null; invalidation: string | null; target: string | null; rewardRisk: string | null } | null;
   asOf: number;
+  /** Where the verified data came from (provider provenance; absent for direct OHLCV import). */
+  source: "PROVIDER" | "IMPORT";
+  provenance: MarketProvenanceView[];
+  options: { decision: string; reasons: string[] } | null;
+}
+
+export interface MarketProvenanceView {
+  role: string;
+  provider: string;
+  providerSymbol: string;
+  canonicalSymbol: string;
+  fetchedAt: number;
+  latestMarketTimestamp: number;
+  warnings: string[];
+}
+
+/** Evidence mode is always shown; a change of mode is surfaced, never silent. */
+export interface EvidenceView {
+  mode: "NONE" | "VISUAL" | "DATA";
+  title: string;
+  detail: string;
+  changedFrom: "VISUAL" | null;
+}
+
+export interface AccountView {
+  kind: "USER" | "TRIAL";
+  email: string | null;
+  authEnabled: boolean;
+  /** Signed in with an unsaved trial analysis in this browser: offer "Save this analysis to your account?". */
+  promotionAvailable: boolean;
+  dataAvailable: boolean;
+  origin: "DIRECT" | "ANONYMOUS_TRIAL" | "TRIAL";
+}
+
+export interface RuntimeView {
+  status: "DATA_VERIFIED" | "UNCHANGED" | "WAIT" | "BLOCKED";
+  title: string;
+  symbol: string;
+  reasons: string[];
+  previousRestored: boolean;
+  marketTimestamp: number | null;
 }
 
 export interface AlertView {
@@ -88,6 +129,7 @@ export interface HistoryRowView {
   permission: string;
   at: number;
   notes: number;
+  origin: "DIRECT" | "ANONYMOUS_TRIAL";
 }
 
 export interface WorkspaceView {
@@ -99,4 +141,7 @@ export interface WorkspaceView {
   latestRecordId: string | null;
   alerts: AlertView[];
   journal: JournalView[];
+  evidence: EvidenceView;
+  account: AccountView;
+  runtime: RuntimeView | null;
 }

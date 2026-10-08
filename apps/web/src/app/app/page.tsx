@@ -1,19 +1,16 @@
-import { cookies } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { Workspace } from "@/components/workspace";
-import { SESSION_COOKIE, TENANT_COOKIE } from "@/server/http";
-import { runtimeDeps } from "@/server/runtime";
+import { requestContext, withAccount } from "@/server/http";
 import { getWorkspace } from "@/server/workspace";
 
 export const dynamic = "force-dynamic";
 
+/** Workspace: open to anonymous TRIAL use (visual analysis only); durable features require a verified user. */
 export default async function WorkspacePage() {
-  const jar = await cookies();
-  const tenantId = jar.get(TENANT_COOKIE)?.value ?? "anonymous";
-  const sessionId = jar.get(SESSION_COOKIE)?.value ?? "none";
-  const initial = await getWorkspace(runtimeDeps(), tenantId, sessionId);
+  const ctx = await requestContext();
+  const initial = withAccount(await getWorkspace(ctx.deps, ctx.identity.tenantId, ctx.identity.sessionId), ctx.account);
   return (
-    <AppShell active="workspace">
+    <AppShell active="workspace" account={{ email: initial.account.email, authEnabled: initial.account.authEnabled }}>
       <Workspace initial={initial} />
     </AppShell>
   );

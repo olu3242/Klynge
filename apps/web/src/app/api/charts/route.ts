@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { errorResponse, identity } from "@/server/http";
+import { errorResponse, requestContext, withAccount } from "@/server/http";
 import { MAX_UPLOAD_BYTES } from "@/server/intake";
-import { clockFrom, runtimeDeps } from "@/server/runtime";
+import { clockFrom } from "@/server/runtime";
 import { uploadChart, WorkspaceError } from "@/server/workspace";
 import type { ExtractionHints } from "@/server/extraction/types";
 
@@ -13,7 +13,8 @@ const ROLES = ["TARGET", "SPX", "MNQ", "VOLUME_PROXY"];
 
 export async function POST(req: Request) {
   try {
-    const { tenantId, sessionId } = await identity();
+    const { identity, deps, account } = await requestContext();
+    const { tenantId, sessionId } = identity;
     const declared = Number(req.headers.get("content-length") ?? 0);
     if (declared > MAX_UPLOAD_BYTES + 64 * 1024) throw new WorkspaceError("INVALID", "Upload too large");
     const form = await req.formData();
@@ -26,8 +27,8 @@ export async function POST(req: Request) {
     if (symbol) hints.symbol = symbol;
     if (TIMEFRAMES.includes(timeframe)) hints.timeframe = timeframe as ExtractionHints["timeframe"] & string;
     if (ROLES.includes(role)) hints.role = role as ExtractionHints["role"] & string;
-    const view = await uploadChart(runtimeDeps(), { tenantId, sessionId, bytes: new Uint8Array(await file.arrayBuffer()), hints, actor: "user", now: clockFrom(req.headers) });
-    return NextResponse.json(view);
+    const view = await uploadChart(deps, { tenantId, sessionId, bytes: new Uint8Array(await file.arrayBuffer()), hints, actor: "user", now: clockFrom(req.headers) });
+    return NextResponse.json(withAccount(view, account));
   } catch (e) {
     return errorResponse(e);
   }

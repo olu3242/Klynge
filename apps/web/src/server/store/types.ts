@@ -1,4 +1,10 @@
-import type { ChartSession, EvidenceMode, KlyngeDecisionState, StateAlert, VisualContextState } from "../engine-core.ts";
+import type { ChartSession, DataHandoff, EvidenceMode, KlyngeDecisionState, MarketDataProvenance, OptionsDecisionState, RuntimeState, StateAlert, VisualContextState } from "../engine-core.ts";
+
+/** DIRECT = created by a verified user; ANONYMOUS_TRIAL = explicitly promoted copy of a trial session. */
+export type SessionOrigin = "DIRECT" | "ANONYMOUS_TRIAL";
+
+/** A chart session as stored (engine ChartSession + ownership provenance). */
+export type StoredSession = ChartSession & { origin?: SessionOrigin; promotedAt?: number };
 
 /** Immutable engine record (one per evaluated snapshot). Annotations live separately in the journal. */
 export interface DecisionRecord {
@@ -11,6 +17,13 @@ export interface DecisionRecord {
   at: number;
   visual?: VisualContextState;
   data?: KlyngeDecisionState;
+  origin?: SessionOrigin;
+  /** DATA runtime records: latest verified bar, downstream options state, provider provenance, visual hints used. */
+  marketTimestamp?: number;
+  runtimeId?: string;
+  options?: OptionsDecisionState | null;
+  marketData?: MarketDataProvenance[];
+  handoff?: DataHandoff;
 }
 
 export interface JournalEntry {
@@ -23,10 +36,15 @@ export interface JournalEntry {
   createdAt: number;
 }
 
-/** Persistence adapter. Every write is idempotent on its deterministic id. */
+/**
+ * Persistence adapter. Every write is idempotent on its deterministic id.
+ * DURABLE = tenant-owned (tenantId is ALWAYS a verified auth user id). TRIAL = anonymous, in-memory, short TTL;
+ * a TRIAL store never holds journal entries, alerts or runtime state, and nothing in it is user-owned history.
+ */
 export interface SessionStore {
-  getSession(tenantId: string, sessionId: string): Promise<ChartSession | undefined>;
-  putSession(session: ChartSession): Promise<void>;
+  readonly durability: "DURABLE" | "TRIAL";
+  getSession(tenantId: string, sessionId: string): Promise<StoredSession | undefined>;
+  putSession(session: StoredSession): Promise<void>;
   deleteSession(tenantId: string, sessionId: string): Promise<void>;
   /** Returns false when the record already existed (idempotent replay). */
   putRecord(record: DecisionRecord): Promise<boolean>;
@@ -35,6 +53,8 @@ export interface SessionStore {
   listAlerts(tenantId: string): Promise<StateAlert[]>;
   addJournal(entry: JournalEntry): Promise<boolean>;
   listJournal(tenantId: string, recordId?: string): Promise<JournalEntry[]>;
+  getRuntimeState(tenantId: string, runtimeId: string): Promise<RuntimeState | null>;
+  putRuntimeState(tenantId: string, state: RuntimeState): Promise<void>;
 }
 
 export type ImageRetention = "NONE" | "SESSION";

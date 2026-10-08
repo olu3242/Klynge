@@ -12,7 +12,7 @@ export default tseslint.config(
   },
   {
     // Layering: core engine layers never depend on downstream consumers (options, replay, pipeline).
-    files: ["src/klynge/{domain,data-quality,indicators,structure,engine,regime,policies,levels,price-action,confirmation,risk,triggers,timeframe,visual,alerts}/**/*.ts"],
+    files: ["src/klynge/{domain,data-quality,indicators,structure,engine,regime,policies,levels,price-action,confirmation,risk,triggers,timeframe,visual,alerts,providers}/**/*.ts"],
     ignores: ["src/**/*.test.ts"],
     rules: {
       "no-restricted-imports": [

@@ -44,6 +44,9 @@ export interface TradingSession {
   candles: Candle[];
 }
 
+/** Ascending sessions for one symbol (prior sessions + current). The canonical multi-session input. */
+export type TradingHistory = readonly TradingSession[];
+
 export interface TechnicalState {
   symbol: string;
   timeframe: Timeframe;

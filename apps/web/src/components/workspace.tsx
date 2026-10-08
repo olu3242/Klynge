@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { ProvenanceBadge } from "@/components/status";
 import { COMPACT_RISK_NOTICE } from "@/lib/notices";
-import type { ChartView, DataDecisionView, FieldView, VisualContextView, WorkspaceView } from "@/lib/view-model";
+import type { ChartView, DataDecisionView, EvidenceView, FieldView, RuntimeView, VisualContextView, WorkspaceView } from "@/lib/view-model";
 
 const ROLES = [
   { value: "", label: "Detect automatically" },
@@ -42,7 +42,7 @@ export function Workspace({ initial }: { initial: WorkspaceView }) {
   const [timeframe, setTimeframe] = useState("");
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const ids = { role: useId(), symbol: useId(), tf: useId(), file: useId(), ohlcv: useId(), note: useId() };
+  const ids = { role: useId(), symbol: useId(), tf: useId(), file: useId(), ohlcv: useId(), note: useId(), connect: useId() };
 
   const run = useCallback(async (fn: () => Promise<WorkspaceView>) => {
     setBusy(true);
@@ -102,6 +102,24 @@ export function Workspace({ initial }: { initial: WorkspaceView }) {
           Klynge reads what is visible on your chart, tells you what it could not verify, and what it still needs before reaching a conclusion.
         </p>
       </div>
+
+      <EvidenceBanner evidence={view.evidence} />
+      <AccountNotice
+        view={view}
+        busy={busy}
+        onPromote={(accept) =>
+          run(async () => {
+            const res = await fetch("/api/session/promote", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ accept }) });
+            if (!accept) {
+              const current = await call("/api/workspace", { method: "GET" });
+              return { ...current, account: { ...current.account, promotionAvailable: false } };
+            }
+            const body = (await res.json()) as WorkspaceView & { error?: string };
+            if (!res.ok) throw new Error(body.error ?? "Could not save the analysis");
+            return body;
+          })
+        }
+      />
 
       <Card aria-labelledby="upload-title">
         <CardTitle id="upload-title">Chart intake</CardTitle>
@@ -175,7 +193,14 @@ export function Workspace({ initial }: { initial: WorkspaceView }) {
         ))}
       </div>
 
-      <DataImport busy={busy} id={ids.ohlcv} onImport={(text) => run(() => call("/api/ohlcv", { method: "POST", headers: { "content-type": "application/json" }, body: text }))} />
+      <DataConnect
+        view={view}
+        busy={busy}
+        id={ids.connect}
+        onConnect={(sym) => run(() => call("/api/data/connect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(sym ? { symbol: sym } : {}) }))}
+      />
+      {view.runtime && <RuntimeStatus r={view.runtime} />}
+      {view.account.kind === "USER" && <DataImport busy={busy} id={ids.ohlcv} onImport={(text) => run(() => call("/api/ohlcv", { method: "POST", headers: { "content-type": "application/json" }, body: text }))} />}
       {view.data && <DataDecisionCard d={view.data} />}
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
@@ -509,6 +534,26 @@ function DataDecisionCard({ d }: { d: DataDecisionView }) {
           ))}
         </dl>
       )}
+      {d.options && (
+        <p className="mt-4 text-sm" data-testid="options-state">
+          <span className="text-k-secondary">Options (downstream of the underlying decision):</span> {d.options.decision}
+          {d.options.reasons[0] ? ` — ${d.options.reasons[0]}` : ""}
+        </p>
+      )}
+      <div className="mt-4" data-testid="data-provenance">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-k-secondary">Data provenance</h3>
+        {d.source === "IMPORT" ? (
+          <p className="mt-1 text-sm">Imported OHLCV file · validated by the deterministic engine</p>
+        ) : (
+          <ul className="mt-1 grid gap-1 text-sm">
+            {d.provenance.map((p) => (
+              <li key={p.role} className="break-words">
+                <span className="font-semibold">{p.canonicalSymbol}</span> <span className="text-k-secondary">({p.role.toLowerCase()})</span> · {p.provider} {p.providerSymbol} · latest bar {new Date(p.latestMarketTimestamp).toISOString().replace(".000Z", "Z")}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <p className="mt-4 text-xs text-k-secondary" role="note">
         {directional ? "Conditions met is not a recommendation. " : ""}
         {COMPACT_RISK_NOTICE}
@@ -517,8 +562,128 @@ function DataDecisionCard({ d }: { d: DataDecisionView }) {
   );
 }
 
+function EvidenceBanner({ evidence }: { evidence: EvidenceView }) {
+  const data = evidence.mode === "DATA";
+  return (
+    <section aria-label="Evidence mode" data-testid="evidence-mode" data-mode={evidence.mode} className={`rounded-2xl border px-5 py-4 ${data ? "border-k-lime/50 bg-k-lime/5" : evidence.mode === "VISUAL" ? "border-k-warning/50 bg-k-warning/5" : "border-k-border bg-k-surface"}`}>
+      <p className="text-sm font-extrabold tracking-[0.14em]">
+        <span aria-hidden="true">{data ? "◆ " : evidence.mode === "VISUAL" ? "◐ " : "○ "}</span>
+        {evidence.title}
+      </p>
+      <p className="text-sm text-k-secondary">{evidence.detail}</p>
+      {evidence.changedFrom && (
+        <p className="mt-2 text-sm" role="status" data-testid="evidence-transition">
+          Evidence mode changed: VISUAL ANALYSIS → DATA VERIFIED. The visual analysis below stays observation-only.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function AccountNotice({ view, busy, onPromote }: { view: WorkspaceView; busy: boolean; onPromote: (accept: boolean) => void }) {
+  if (view.account.kind === "TRIAL") {
+    return (
+      <p role="note" data-testid="trial-notice" className="rounded-lg border border-k-border px-4 py-3 text-sm">
+        <strong>Trial mode.</strong> Charts are analysed but nothing is saved — no history, journal or alerts.{" "}
+        {view.account.authEnabled ? (
+          <a href="/sign-in?next=/app" className="font-semibold text-k-lime underline">
+            Sign in to save your work
+          </a>
+        ) : null}
+      </p>
+    );
+  }
+  if (!view.account.promotionAvailable) return null;
+  return (
+    <Card aria-labelledby="promote-title" data-testid="promotion-prompt">
+      <CardTitle id="promote-title">Save this analysis to your account?</CardTitle>
+      <p className="mt-2 text-sm text-k-secondary">Your trial charts will be copied into a new saved session marked as coming from a trial. Nothing is saved unless you choose to.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button disabled={busy} onClick={() => onPromote(true)}>
+          Save to my account
+        </Button>
+        <Button variant="subtle" disabled={busy} onClick={() => onPromote(false)}>
+          Not now
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function DataConnect({ view, busy, id, onConnect }: { view: WorkspaceView; busy: boolean; id: string; onConnect: (symbol: string) => void }) {
+  const [symbol, setSymbol] = useState("");
+  const target = view.charts.find((c) => c.role === "TARGET")?.symbol ?? null;
+  return (
+    <Card aria-labelledby="connect-title" data-testid="data-connect">
+      <CardTitle id="connect-title">Connect verified data</CardTitle>
+      <p className="mt-2 text-sm text-k-secondary">
+        Visual analysis observes conditions. Verified market data runs the full deterministic engine independently — your chart only tells it which symbol to load.
+      </p>
+      {view.account.kind === "TRIAL" ? (
+        <p className="mt-3 text-sm">
+          {view.account.authEnabled ? (
+            <a href="/sign-in?next=/app" className="font-semibold text-k-lime underline">
+              Sign in to connect verified data
+            </a>
+          ) : (
+            "Connecting verified data requires an account."
+          )}
+        </p>
+      ) : !view.account.dataAvailable ? (
+        <p className="mt-3 text-sm">No market-data provider is configured. You can still import an OHLCV file below.</p>
+      ) : (
+        <form
+          className="mt-3 flex flex-wrap items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onConnect(symbol);
+          }}
+        >
+          <div className="grid gap-1">
+            <label htmlFor={id} className="text-xs font-semibold text-k-secondary">
+              Symbol {target ? `(from your chart: ${target})` : ""}
+            </label>
+            <input id={id} value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} placeholder={target ?? "e.g. TSLA"} className="input w-40" maxLength={12} />
+          </div>
+          <Button type="submit" disabled={busy}>
+            Connect verified data
+          </Button>
+        </form>
+      )}
+    </Card>
+  );
+}
+
+function RuntimeStatus({ r }: { r: RuntimeView }) {
+  const bad = r.status === "BLOCKED" || r.status === "WAIT";
+  return (
+    <section aria-label="Market data status" data-testid="runtime-status" data-status={r.status} className={`rounded-xl border px-4 py-3 text-sm ${bad ? "border-k-danger/50 bg-k-danger/5" : "border-k-lime/40 bg-k-lime/5"}`}>
+      <p className="font-semibold">
+        <span aria-hidden="true">{bad ? "■ " : "◆ "}</span>
+        {r.symbol}: {r.title}
+      </p>
+      {r.previousRestored && r.status !== "UNCHANGED" && <p className="text-k-secondary">Previous saved decision restored for continuity.</p>}
+      {r.reasons.length > 0 && (
+        <ul className="mt-1 list-disc pl-5">
+          {r.reasons.map((x) => (
+            <li key={x}>{x}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function Journal({ view, id, busy, onAdd }: { view: WorkspaceView; id: string; busy: boolean; onAdd: (note: string) => void }) {
   const [note, setNote] = useState("");
+  if (view.account.kind === "TRIAL") {
+    return (
+      <Card aria-labelledby="journal-title">
+        <CardTitle id="journal-title">Journal</CardTitle>
+        <p className="mt-3 text-sm text-k-secondary">The journal is saved to your account. Sign in to keep notes on your analyses.</p>
+      </Card>
+    );
+  }
   return (
     <Card aria-labelledby="journal-title">
       <CardTitle id="journal-title">Journal</CardTitle>

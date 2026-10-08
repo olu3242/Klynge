@@ -19,18 +19,34 @@ export default tseslint.config(
     },
   },
   {
+    // SERVICE ROLE ≠ USER AUTHORIZATION: service-role helpers only in src/server/admin/** and scripts/.
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    ignores: ["src/server/admin/**", "src/**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [{ group: ["**/admin/*", "@/server/admin/*"], message: "Service-role helpers are restricted to src/server/admin and scripts/ (never user request paths)." }] },
+      ],
+    },
+  },
+  {
     // Client components and shared view types must never reach the engine or server modules.
     files: ["src/components/**/*.tsx", "src/lib/**/*.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: [{ group: ["@/server/*", "**/server/*", "**/src/klynge/*", "**/klynge/index*"], message: "Client code must not import the engine or server modules." }] },
+        {
+          patterns: [
+            { group: ["@/server/*", "**/server/*", "**/src/klynge/*", "**/klynge/index*"], message: "Client code must not import the engine or server modules." },
+            { group: ["**/admin/*", "@/server/admin/*"], message: "Service-role helpers are restricted to src/server/admin and scripts/." },
+          ],
+        },
       ],
     },
   },
   {
     files: ["scripts/**/*.mjs", "scripts/**/*.ts"],
-    languageOptions: { globals: { console: "readonly", process: "readonly", Buffer: "readonly", document: "readonly", window: "readonly", getComputedStyle: "readonly", fetch: "readonly", setTimeout: "readonly", FormData: "readonly", Blob: "readonly", CSS: "readonly" } },
+    languageOptions: { globals: { console: "readonly", process: "readonly", Buffer: "readonly", document: "readonly", window: "readonly", getComputedStyle: "readonly", fetch: "readonly", setTimeout: "readonly", FormData: "readonly", Blob: "readonly", CSS: "readonly", URL: "readonly", crypto: "readonly" } },
   },
   { files: ["src/**/*.test.ts"], rules: { "@typescript-eslint/no-non-null-assertion": "off" } },
 );

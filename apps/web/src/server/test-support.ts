@@ -29,3 +29,34 @@ export function testDeps(opts: { retention?: ImageRetention; limit?: RateLimitPo
     telemetry: new MemoryTelemetrySink(),
   };
 }
+
+// ── Batches 41–50 helpers ─────────────────────────────────────────────────────
+import type { CookieJar, CookieOptions } from "./auth/types.ts";
+import { mockMarketData } from "./market-data.ts";
+import { TrialSessionStore } from "./store/trial-store.ts";
+
+export const OHLCV_FIXTURE = path.join(APP_ROOT, "test/fixtures/ohlcv-call.json");
+export const FIXTURE_END = (JSON.parse(readFileSync(OHLCV_FIXTURE, "utf8")) as { asOf: number }).asOf;
+export const USER_A = "11111111-1111-4111-a111-111111111111";
+export const USER_B = "22222222-2222-4222-a222-222222222222";
+export const TRIAL_A = "trial:33333333-3333-4333-a333-333333333333";
+
+/** Cookie jar over a Map (mirrors next/headers cookies() in tests). */
+export function memoryJar(initial: Record<string, string> = {}): CookieJar & { store: Map<string, { value: string; options?: CookieOptions }> } {
+  const store = new Map(Object.entries(initial).map(([k, v]) => [k, { value: v }]));
+  return {
+    store,
+    get: (n) => store.get(n)?.value,
+    getAll: () => [...store].map(([name, v]) => ({ name, value: v.value })),
+    set: (n, value, options) => void store.set(n, { value, ...(options ? { options } : {}) }),
+    delete: (n) => void store.delete(n),
+  };
+}
+
+export function trialDeps(clock?: () => number) {
+  return { ...testDeps(), store: new TrialSessionStore(clock ? { clock } : {}) };
+}
+
+export function marketDeps(base = testDeps()) {
+  return { ...base, market: mockMarketData(OHLCV_FIXTURE) };
+}

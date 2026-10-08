@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 import { COMPACT_RISK_NOTICE } from "@/lib/notices";
 
-export function AppShell({ children, active }: { children: ReactNode; active: "workspace" | "history" }) {
+export interface ShellAccount {
+  email: string | null;
+  authEnabled: boolean;
+}
+
+export function AppShell({ children, active, account }: { children: ReactNode; active: "workspace" | "history" | "sign-in"; account?: ShellAccount }) {
   const link = (href: string, label: string, key: string) => (
     <a href={href} aria-current={active === key ? "page" : undefined} className={active === key ? "text-k-text" : "text-k-secondary hover:text-k-text"}>
       {label}
@@ -15,9 +20,21 @@ export function AppShell({ children, active }: { children: ReactNode; active: "w
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/klynge-logo-dark.svg" alt="Klynge" width={110} height={29} className="h-7 w-auto" />
           </a>
-          <div className="ml-auto flex gap-5 text-sm">
+          <div className="ml-auto flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
             {link("/app", "Workspace", "workspace")}
             {link("/app/history", "History", "history")}
+            {account?.email ? (
+              <form method="post" action="/auth/sign-out" className="flex items-center gap-3">
+                <span className="max-w-[12rem] truncate text-k-secondary" data-testid="account-email">
+                  {account.email}
+                </span>
+                <button className="rounded-lg border border-k-border px-3 py-1 font-semibold hover:border-k-lime">Sign out</button>
+              </form>
+            ) : account?.authEnabled ? (
+              <a href="/sign-in" className="rounded-lg bg-k-lime px-3 py-1 font-semibold text-k-black hover:bg-k-lime-bright">
+                Sign in
+              </a>
+            ) : null}
           </div>
         </nav>
       </header>

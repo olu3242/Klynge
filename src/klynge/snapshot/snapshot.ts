@@ -2,6 +2,7 @@ import { deepFreeze } from "../domain/freeze.ts";
 import type { Candle, EvidenceMode } from "../domain/types.ts";
 import { evaluateMultiTimeframeSetup } from "../pipeline/mtf-pipeline.ts";
 import type { MultiTimeframePipelineInput, MultiTimeframePipelineResult } from "../pipeline/mtf-pipeline.ts";
+import type { MarketDataProvenance } from "../providers/types.ts";
 import type { KlyngeDecisionState } from "../triggers/types.ts";
 import { chartFor } from "../visual/session.ts";
 import type { ChartSession } from "../visual/session.ts";
@@ -33,6 +34,8 @@ export interface NormalizedSnapshot {
   captureTimes: Partial<Record<ChartRole, number>>;
   visual?: ChartSession;
   data?: Omit<MultiTimeframePipelineInput, "now" | "previous">;
+  /** Provider provenance for DATA snapshots built from normalized provider feeds (absent for direct OHLCV import). */
+  marketData?: MarketDataProvenance[];
 }
 
 export function buildVisualSnapshot(session: ChartSession, now: number): Readonly<NormalizedSnapshot> {
@@ -58,7 +61,12 @@ export function buildVisualSnapshot(session: ChartSession, now: number): Readonl
 
 const lastCandle = (sessions: readonly { candles: Candle[] }[]) => sessions[sessions.length - 1]?.candles.at(-1);
 
-export function buildDataSnapshot(sessionId: string, data: Omit<MultiTimeframePipelineInput, "now" | "previous">, now: number): Readonly<NormalizedSnapshot> {
+export function buildDataSnapshot(
+  sessionId: string,
+  data: Omit<MultiTimeframePipelineInput, "now" | "previous">,
+  now: number,
+  opts: { snapshotId?: string; marketData?: readonly MarketDataProvenance[] } = {},
+): Readonly<NormalizedSnapshot> {
   const t = lastCandle(data.target);
   const captureTimes: Partial<Record<ChartRole, number>> = {};
   const sources: SnapshotSource[] = [];
@@ -76,7 +84,7 @@ export function buildDataSnapshot(sessionId: string, data: Omit<MultiTimeframePi
     fields["TARGET.lastPrice"] = { value: t.close, provenance: "DATA_VERIFIED" };
   }
   return deepFreeze({
-    snapshotId: `${sessionId}:DATA:${now}`,
+    snapshotId: opts.snapshotId ?? `${sessionId}:DATA:${now}`,
     evidenceMode: "DATA" as const,
     sessionId,
     targetSymbol: t?.symbol ?? null,
@@ -85,6 +93,7 @@ export function buildDataSnapshot(sessionId: string, data: Omit<MultiTimeframePi
     fields,
     captureTimes,
     data,
+    ...(opts.marketData ? { marketData: [...opts.marketData] } : {}),
   });
 }
 

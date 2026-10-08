@@ -90,10 +90,23 @@ for (const f of files) {
 // PRODUCT app (apps/web): banned language in client-facing source, and — when built — engine/secret markers in
 // browser-delivered chunks (same guard as `npm run bundle:check` in apps/web).
 const APP_CLIENT_ROOTS = ["apps/web/src/app", "apps/web/src/components", "apps/web/src/lib"].filter((p) => existsSync(join(ROOT, p)));
+/**
+ * PRODUCT tier may show state, reasons, missing conditions, risk level, evidence mode and provenance — never
+ * threshold formulas, ATR multipliers, R:R internals, state-machine thresholds, provider normalization internals,
+ * options ranking internals or agent prompts.
+ */
+const PRODUCT_IP_PATTERNS = [
+  [/\d+(\.\d+)?\s*[x×*]\s*ATR|ATR\s*[x×*]\s*\d|atrToleranceMultiplier|maximumStopAtr|minimumCloseDistanceAtr/i, "ATR multiplier"],
+  [/minimumRewardRiskRatio|reward[\s/-]*risk\s*(>=|≥|>)\s*\d/i, "R:R internals"],
+  [/requiredCloses|maxChartSetSkewMs|maxMarketSnapshotSkewMs|minimumConfidence|maxChartAgeMs|LEGAL_TRANSITIONS/, "state-machine / policy thresholds"],
+  [/maxFeedSkewMs|maxStalenessMs|normalizeFeed|assembleFeeds|marketStateKey|providerFailurePermission/, "provider normalization internals"],
+  [/compareCandidates|minimumOpenInterest|maximumSpreadPercent|ranking[\s-]*formula/i, "options ranking internals"],
+  [/You read trading chart screenshots|CHART_EXTRACTION_SYSTEM/, "agent prompt"],
+];
 const appFiles = APP_CLIENT_ROOTS.flatMap((p) => walk(p)).filter((f) => /\.(tsx?|css)$/.test(f) && !f.includes("/api/"));
 for (const f of appFiles) {
   readFileSync(join(ROOT, f), "utf8").split("\n").forEach((line, i) => {
-    for (const [re, label] of BANNED) if (re.test(line)) violations.push(`${f}:${i + 1}: ${label} — "${line.trim().slice(0, 120)}"`);
+    for (const [re, label] of [...BANNED, ...PRODUCT_IP_PATTERNS]) if (re.test(line)) violations.push(`${f}:${i + 1}: ${label} — "${line.trim().slice(0, 120)}"`);
   });
 }
 const appStatic = join(ROOT, "apps/web/.next/static");

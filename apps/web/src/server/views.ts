@@ -1,6 +1,7 @@
 import { OBSERVATION_FIELDS, REQUIRED_FIELDS } from "./engine-core.ts";
-import type { ChartEntry, ChartSession, KlyngeDecisionState, StateAlert, VisualContextState } from "./engine-core.ts";
-import type { ChartView, DataDecisionView, FieldView, VisualContextView } from "../lib/view-model.ts";
+import type { ChartEntry, ChartSession, CycleOutcome, KlyngeDecisionState, StateAlert, VisualContextState } from "./engine-core.ts";
+import type { ChartView, DataDecisionView, EvidenceView, FieldView, RuntimeView, VisualContextView } from "../lib/view-model.ts";
+import type { DecisionRecord } from "./store/types.ts";
 import { missingContext } from "./engine-core.ts";
 
 const LABELS: Record<string, string> = {
@@ -83,7 +84,7 @@ const STAGE_LABELS: [keyof KlyngeDecisionState["progress"], string][] = [
 ];
 const n = (x: number | undefined) => (x === undefined ? null : x.toFixed(2));
 
-export function dataView(d: KlyngeDecisionState): DataDecisionView {
+export function dataView(d: KlyngeDecisionState, record?: Pick<DecisionRecord, "marketData" | "options">): DataDecisionView {
   const r = d.risk;
   return {
     evidenceMode: "DATA",
@@ -111,7 +112,45 @@ export function dataView(d: KlyngeDecisionState): DataDecisionView {
         }
       : null,
     asOf: d.provenance.evaluatedAt,
+    source: record?.marketData?.length ? "PROVIDER" : "IMPORT",
+    provenance: (record?.marketData ?? []).map((p) => ({ role: p.role, provider: p.provider, providerSymbol: p.providerSymbol, canonicalSymbol: p.canonicalSymbol, fetchedAt: p.fetchedAt, latestMarketTimestamp: p.latestMarketTimestamp, warnings: p.warnings })),
+    options: record?.options ? { decision: record.options.decision, reasons: record.options.reasons.slice(0, 3) } : null,
   };
+}
+
+export function evidenceView(hasVisual: boolean, hasData: boolean): EvidenceView {
+  if (hasData) return { mode: "DATA", title: "DATA VERIFIED", detail: "Deterministic Klynge engine active", changedFrom: hasVisual ? "VISUAL" : null };
+  if (hasVisual) return { mode: "VISUAL", title: "VISUAL ANALYSIS", detail: "Conditions observed · Data verification required", changedFrom: null };
+  return { mode: "NONE", title: "NO ANALYSIS YET", detail: "Upload a chart or connect verified market data", changedFrom: null };
+}
+
+const FAILURE_TEXT: Record<string, string> = {
+  PROVIDER_UNAVAILABLE: "Market data provider unavailable",
+  RATE_LIMITED: "Market data provider rate limit reached — retrying later",
+  STALE_DATA: "Market data is stale",
+  MISSING_BARS: "Market data has missing bars",
+  OUT_OF_ORDER: "Market data arrived out of order",
+  DUPLICATE_BARS: "Market data contains duplicate bars",
+  MALFORMED_BARS: "Market data contains invalid bars",
+  FUTURE_BAR: "Market data is ahead of the market clock",
+  SESSION_BOUNDARY: "Market data falls outside regular session hours",
+  INVALID_SYMBOL_MAPPING: "This symbol is not available from the market data provider",
+  TIMESTAMP_DISAGREEMENT: "Target and broad-market data are not synchronized",
+  PARTIAL_MARKET_CONTEXT: "Broad-market data is incomplete",
+};
+
+/** Plain-language runtime status (no provider normalization internals). */
+export function runtimeView(o: CycleOutcome, symbol: string): RuntimeView {
+  switch (o.kind) {
+    case "EVALUATED":
+      return { status: "DATA_VERIFIED", title: "DATA VERIFIED — deterministic Klynge engine active", symbol, reasons: o.decision.reasons.slice(0, 3), previousRestored: o.previousRestored, marketTimestamp: o.marketTimestamp };
+    case "UNCHANGED":
+      return { status: "UNCHANGED", title: "No new market data — previous decision restored", symbol, reasons: [], previousRestored: true, marketTimestamp: o.marketTimestamp };
+    case "PROVIDER_FAILURE":
+      return { status: o.permission, title: `${o.permission} — market data could not be verified`, symbol, reasons: [...new Set(o.failures.map((f) => FAILURE_TEXT[f.code] ?? "Market data could not be verified"))], previousRestored: false, marketTimestamp: null };
+    case "RUNTIME_STATE_UNAVAILABLE":
+      return { status: "BLOCKED", title: "BLOCKED — saved analysis state could not be verified", symbol, reasons: ["Runtime state unavailable; nothing was reconstructed"], previousRestored: false, marketTimestamp: null };
+  }
 }
 
 export function alertView(a: StateAlert) {

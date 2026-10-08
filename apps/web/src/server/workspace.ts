@@ -8,19 +8,22 @@ import {
   detectDecisionChange,
   detectVisualChange,
   evaluateSnapshot,
+  handoffFromVisual,
   isUsable,
+  runDataCycle,
   validateObservation,
 } from "./engine-core.ts";
-import type { ChartObservation, ChartSession, ConfirmationEdit, KlyngeDecisionState, StateAlert, VisualContextState, VisualPolicy } from "./engine-core.ts";
+import type { ChartObservation, ChartSession, ConfirmationEdit, CycleOutcome, KlyngeDecisionState, RuntimeStore, StateAlert, VisualContextState, VisualPolicy } from "./engine-core.ts";
+import type { MarketDataSetup } from "./market-data.ts";
 import type { ExtractionHints, ChartExtractor } from "./extraction/types.ts";
 import { processUpload } from "./intake.ts";
 import { parseOhlcv } from "./ohlcv.ts";
 import type { RateLimiter } from "./rate-limit.ts";
-import type { DecisionRecord, ImageStore, SessionStore } from "./store/types.ts";
+import type { DecisionRecord, ImageStore, SessionStore, StoredSession } from "./store/types.ts";
 import { track } from "./telemetry.ts";
 import type { TelemetrySink } from "./telemetry.ts";
-import { alertView, chartView, completenessView, dataView, visualView } from "./views.ts";
-import type { HistoryRowView, WorkspaceView } from "../lib/view-model.ts";
+import { alertView, chartView, completenessView, dataView, evidenceView, runtimeView, visualView } from "./views.ts";
+import type { AccountView, HistoryRowView, RuntimeView, WorkspaceView } from "../lib/view-model.ts";
 
 export interface WorkspaceDeps {
   store: SessionStore;
@@ -29,11 +32,13 @@ export interface WorkspaceDeps {
   limiter: RateLimiter;
   telemetry: TelemetrySink;
   visualPolicy?: VisualPolicy;
+  /** Verified market-data provider (DATA mode). Absent => connecting data is unavailable. */
+  market?: MarketDataSetup | null;
 }
 
 export class WorkspaceError extends Error {
   override readonly name = "WorkspaceError";
-  readonly code: "RATE_LIMITED" | "NOT_FOUND" | "INVALID";
+  readonly code: "RATE_LIMITED" | "NOT_FOUND" | "INVALID" | "AUTH_REQUIRED";
   readonly retryAfterMs: number;
   constructor(code: WorkspaceError["code"], message: string, retryAfterMs = 0) {
     super(message);
@@ -43,6 +48,11 @@ export class WorkspaceError extends Error {
 }
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex").slice(0, 24);
+
+/** NO VERIFIED USER → NO DURABLE USER-OWNED MARKET SESSION. */
+function requireDurable(deps: WorkspaceDeps, what: string): void {
+  if (deps.store.durability !== "DURABLE") throw new WorkspaceError("AUTH_REQUIRED", `Sign in to ${what}. Trial analyses are not saved.`);
+}
 
 async function loadSession(deps: WorkspaceDeps, tenantId: string, sessionId: string, now: number): Promise<ChartSession> {
   return (await deps.store.getSession(tenantId, sessionId)) ?? { sessionId, tenantId, createdAt: now, charts: [] };
@@ -80,10 +90,12 @@ async function evaluateVisual(deps: WorkspaceDeps, session: ChartSession, now: n
     evidenceMode: "VISUAL",
     at: now,
     visual: context,
+    ...((session as StoredSession).origin ? { origin: (session as StoredSession).origin } : {}),
   };
   await deps.store.putRecord(record);
   const alert = detectVisualChange(prior?.visual, context);
-  if (alert) await deps.store.addAlert(session.tenantId, alert);
+  // Trial sessions never persist alerts.
+  if (alert && deps.store.durability === "DURABLE") await deps.store.addAlert(session.tenantId, alert);
   track(deps.telemetry, "decision.evaluated", session.tenantId, now, { evidenceMode: "VISUAL", label: context.label, permission: context.permission, blockers: context.blockers });
   return { context, recordId: record.recordId };
 }
@@ -157,6 +169,7 @@ export async function confirmField(
 
 /** DATA mode: OHLCV import → DATA snapshot → existing pipeline, chaining the persisted previous decision. */
 export async function importOhlcv(deps: WorkspaceDeps, input: { tenantId: string; sessionId: string; json: unknown; now: number }): Promise<WorkspaceView> {
+  requireDurable(deps, "import market data");
   let payload;
   try {
     payload = parseOhlcv(input.json);
@@ -173,7 +186,8 @@ export async function importOhlcv(deps: WorkspaceDeps, input: { tenantId: string
   const evaluation = evaluateSnapshot(snapshot, { now: asOf, ...(previous ? { previous } : {}) });
   if (evaluation.evidenceMode !== "DATA") throw new Error("unreachable");
   const decision = evaluation.result.setup;
-  await deps.store.putRecord({ recordId: snapshot.snapshotId, tenantId: input.tenantId, sessionId: input.sessionId, symbol, timeframe: decision.timeframe, evidenceMode: "DATA", at: asOf, data: decision });
+  const marketTimestamp = data.target.at(-1)?.candles.at(-1)?.timestamp ?? asOf;
+  await deps.store.putRecord({ recordId: snapshot.snapshotId, tenantId: input.tenantId, sessionId: input.sessionId, symbol, timeframe: decision.timeframe, evidenceMode: "DATA", at: asOf, data: decision, marketTimestamp });
   const alert: StateAlert | null = detectDecisionChange(previous, decision);
   if (alert) await deps.store.addAlert(input.tenantId, alert);
   track(deps.telemetry, "decision.evaluated", input.tenantId, input.now, { evidenceMode: "DATA", decision: decision.decision, blockers: decision.blockers });
@@ -181,6 +195,7 @@ export async function importOhlcv(deps: WorkspaceDeps, input: { tenantId: string
 }
 
 export async function addJournalNote(deps: WorkspaceDeps, input: { tenantId: string; recordId: string; note: string; author: string; now: number }): Promise<void> {
+  requireDurable(deps, "keep a journal");
   const note = input.note.trim().slice(0, 2000);
   if (!note) throw new WorkspaceError("INVALID", "Note is empty");
   const record = (await deps.store.listRecords(input.tenantId)).find((r) => r.recordId === input.recordId);
@@ -193,7 +208,12 @@ export async function resetSession(deps: WorkspaceDeps, tenantId: string, sessio
   await deps.store.deleteSession(tenantId, sessionId);
 }
 
-export async function getWorkspace(deps: WorkspaceDeps, tenantId: string, sessionId: string): Promise<WorkspaceView> {
+export async function getWorkspace(
+  deps: WorkspaceDeps,
+  tenantId: string,
+  sessionId: string,
+  extras: { account?: Partial<AccountView>; runtime?: RuntimeView | null } = {},
+): Promise<WorkspaceView> {
   const session = await deps.store.getSession(tenantId, sessionId);
   const records = await deps.store.listRecords(tenantId, { sessionId });
   const lastVisual = records.filter((r) => r.evidenceMode === "VISUAL").at(-1);
@@ -208,7 +228,18 @@ export async function getWorkspace(deps: WorkspaceDeps, tenantId: string, sessio
       { role: "MNQ", present: false, symbol: null },
     ],
     visual: lastVisual?.visual ? visualView(lastVisual.visual) : null,
-    data: lastData?.data ? dataView(lastData.data) : null,
+    data: lastData?.data ? dataView(lastData.data, lastData) : null,
+    evidence: evidenceView(Boolean(lastVisual?.visual), Boolean(lastData?.data)),
+    account: {
+      kind: deps.store.durability === "DURABLE" ? "USER" : "TRIAL",
+      email: null,
+      authEnabled: false,
+      promotionAvailable: false,
+      dataAvailable: Boolean(deps.market),
+      origin: session?.origin ?? (deps.store.durability === "DURABLE" ? "DIRECT" : "TRIAL"),
+      ...extras.account,
+    },
+    runtime: extras.runtime ?? null,
     latestRecordId: latest?.recordId ?? null,
     alerts: (await deps.store.listAlerts(tenantId)).slice(0, 20).map(alertView),
     journal: (await deps.store.listJournal(tenantId)).filter((j) => records.some((r) => r.recordId === j.recordId)).map((j) => ({ entryId: j.entryId, recordId: j.recordId, note: j.note, createdAt: j.createdAt })),
@@ -216,6 +247,7 @@ export async function getWorkspace(deps: WorkspaceDeps, tenantId: string, sessio
 }
 
 export async function history(deps: WorkspaceDeps, tenantId: string, symbol?: string): Promise<HistoryRowView[]> {
+  requireDurable(deps, "see your history");
   const records = await deps.store.listRecords(tenantId, symbol ? { symbol } : {});
   const journal = await deps.store.listJournal(tenantId);
   return records
@@ -229,5 +261,97 @@ export async function history(deps: WorkspaceDeps, tenantId: string, symbol?: st
       permission: r.visual ? r.visual.permission : r.data?.decision === "CALL_SETUP" || r.data?.decision === "PUT_SETUP" ? "CONDITIONS MET" : (r.data?.decision ?? "—"),
       at: r.at,
       notes: journal.filter((j) => j.recordId === r.recordId).length,
+      origin: r.origin ?? "DIRECT",
     }));
+}
+
+/**
+ * Explicit anonymous promotion (only after the signed-in user accepts "Save this analysis to your account?").
+ * COPIES the trial snapshot into a NEW durable session owned by the verified user, tagged origin ANONYMOUS_TRIAL.
+ * The trial session itself is never mutated or re-owned.
+ */
+export async function promoteTrial(
+  trialStore: SessionStore,
+  userDeps: WorkspaceDeps,
+  input: { trialTenantId: string; trialSessionId: string; userId: string; newSessionId: string; now: number },
+): Promise<WorkspaceView> {
+  requireDurable(userDeps, "save an analysis");
+  if (trialStore.durability !== "TRIAL" || !input.trialTenantId.startsWith("trial:")) throw new WorkspaceError("INVALID", "Only trial sessions can be promoted");
+  const trial = await trialStore.getSession(input.trialTenantId, input.trialSessionId);
+  if (!trial || trial.charts.length === 0) throw new WorkspaceError("NOT_FOUND", "No trial analysis to save");
+  const copy: StoredSession = { ...structuredClone(trial), tenantId: input.userId, sessionId: input.newSessionId, origin: "ANONYMOUS_TRIAL", promotedAt: input.now };
+  await userDeps.store.putSession(copy);
+  await evaluateVisual(userDeps, copy, input.now);
+  track(userDeps.telemetry, "session.promoted", input.userId, input.now, { charts: copy.charts.length });
+  return getWorkspace(userDeps, input.userId, input.newSessionId);
+}
+
+/** Tenant-scoped RuntimeStore over the durable SessionStore (ownership fixed to the verified user). */
+export function runtimeStoreFor(store: SessionStore, tenantId: string): RuntimeStore {
+  const dataRecords = async (symbol?: string) => (await store.listRecords(tenantId, symbol ? { symbol } : {})).filter((r) => r.evidenceMode === "DATA" && r.data);
+  const toPrev = (r: DecisionRecord) => ({ recordId: r.recordId, marketTimestamp: r.marketTimestamp ?? r.at, decision: r.data as KlyngeDecisionState });
+  return {
+    loadState: (id) => store.getRuntimeState(tenantId, id),
+    saveState: (state) => store.putRuntimeState(tenantId, state),
+    latestDecision: async (symbol) => {
+      const list = (await dataRecords(symbol)).sort((a, b) => (a.marketTimestamp ?? a.at) - (b.marketTimestamp ?? b.at) || a.at - b.at);
+      const last = list.at(-1);
+      return last ? toPrev(last) : null;
+    },
+    getDecision: async (recordId) => {
+      const r = (await dataRecords()).find((x) => x.recordId === recordId);
+      return r ? toPrev(r) : null;
+    },
+    putDecision: (rec) =>
+      store.putRecord({
+        recordId: rec.recordId,
+        tenantId,
+        sessionId: rec.sessionId,
+        symbol: rec.symbol,
+        timeframe: rec.timeframe,
+        evidenceMode: "DATA",
+        at: rec.evaluatedAt,
+        data: rec.decision,
+        marketTimestamp: rec.marketTimestamp,
+        options: rec.options,
+        marketData: rec.marketData,
+        ...(rec.handoff ? { handoff: rec.handoff } : {}),
+      }),
+    putAlert: (a) => store.addAlert(tenantId, a),
+  };
+}
+
+const SYMBOL = /^[A-Z][A-Z0-9.^/_-]{0,11}$/;
+
+/**
+ * VISUAL → DATA handoff: "Connect verified data". The visual session contributes HINTS only (symbol, timeframe,
+ * intent); the DATA runtime fetches, normalizes and evaluates verified market data independently, restoring the
+ * previous persisted decision automatically.
+ */
+export async function connectData(
+  deps: WorkspaceDeps,
+  input: { tenantId: string; sessionId: string; symbol?: string; intent?: string; now: number },
+): Promise<WorkspaceView> {
+  requireDurable(deps, "connect verified market data");
+  const market = deps.market;
+  if (!market) throw new WorkspaceError("INVALID", "No verified market-data provider is configured");
+  const session = await deps.store.getSession(input.tenantId, input.sessionId);
+  const handoff = session ? handoffFromVisual(session, input.now, input.intent) : null;
+  const requested = input.symbol?.trim().toUpperCase();
+  if (requested && !SYMBOL.test(requested)) throw new WorkspaceError("INVALID", "Enter a valid symbol");
+  const target = requested || handoff?.symbolHint;
+  if (!target) throw new WorkspaceError("INVALID", "Add a target chart or enter a symbol to connect data");
+  const outcome: Readonly<CycleOutcome> = await runDataCycle(
+    { provider: market.provider, store: runtimeStoreFor(deps.store, input.tenantId) },
+    { runtimeId: `${input.sessionId}:${target}`, sessionId: input.sessionId, targetSymbol: target, timeframePolicy: market.timeframePolicy, historySessions: market.historySessions, calendar: market.calendar, symbolMap: market.symbolMap },
+    input.now,
+    handoff ? { handoff } : {},
+  );
+  track(deps.telemetry, "data.cycle", input.tenantId, input.now, {
+    kind: outcome.kind,
+    provider: market.provider.id,
+    permission: outcome.kind === "PROVIDER_FAILURE" || outcome.kind === "RUNTIME_STATE_UNAVAILABLE" ? outcome.permission : "",
+    decision: outcome.kind === "EVALUATED" || outcome.kind === "UNCHANGED" ? outcome.decision.decision : "",
+  });
+  return getWorkspace(deps, input.tenantId, input.sessionId, { runtime: runtimeView(outcome, target) });
 }

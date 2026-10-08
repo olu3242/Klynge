@@ -1,26 +1,34 @@
-import type { ChartSession, StateAlert } from "../engine-core.ts";
-import type { DecisionRecord, ImageRetention, ImageStore, JournalEntry, SessionStore } from "./types.ts";
+import type { RuntimeState, StateAlert } from "../engine-core.ts";
+import type { DecisionRecord, ImageRetention, ImageStore, JournalEntry, SessionStore, StoredSession } from "./types.ts";
 
+/** Durable in-process store (tests, local dev). Every read and write is scoped by the server-derived tenant id. */
 export class MemorySessionStore implements SessionStore {
-  private sessions = new Map<string, ChartSession>();
-  private records = new Map<string, DecisionRecord>();
-  private alerts = new Map<string, StateAlert & { tenantId: string }>();
-  private journal = new Map<string, JournalEntry>();
-  private k = (t: string, id: string) => `${t}\u0000${id}`;
+  readonly durability: "DURABLE" | "TRIAL" = "DURABLE";
+  protected sessions = new Map<string, StoredSession>();
+  protected records = new Map<string, DecisionRecord>();
+  protected alerts = new Map<string, StateAlert & { tenantId: string }>();
+  protected journal = new Map<string, JournalEntry>();
+  protected runtime = new Map<string, RuntimeState & { tenantId: string }>();
+  protected k = (t: string, id: string) => `${t}\u0000${id}`;
+  /** Called after every mutation (FileSessionStore persists here). */
+  protected changed(): void {}
 
   async getSession(tenantId: string, sessionId: string) {
     return this.sessions.get(this.k(tenantId, sessionId));
   }
-  async putSession(session: ChartSession) {
+  async putSession(session: StoredSession) {
     this.sessions.set(this.k(session.tenantId, session.sessionId), session);
+    this.changed();
   }
   async deleteSession(tenantId: string, sessionId: string) {
     this.sessions.delete(this.k(tenantId, sessionId));
+    this.changed();
   }
   async putRecord(r: DecisionRecord) {
     const key = this.k(r.tenantId, r.recordId);
     if (this.records.has(key)) return false;
     this.records.set(key, r);
+    this.changed();
     return true;
   }
   async listRecords(tenantId: string, filter: { symbol?: string; sessionId?: string } = {}) {
@@ -32,6 +40,7 @@ export class MemorySessionStore implements SessionStore {
     const key = this.k(tenantId, alert.alertId);
     if (this.alerts.has(key)) return false;
     this.alerts.set(key, { ...alert, tenantId });
+    this.changed();
     return true;
   }
   async listAlerts(tenantId: string) {
@@ -41,10 +50,21 @@ export class MemorySessionStore implements SessionStore {
     const key = this.k(e.tenantId, e.entryId);
     if (this.journal.has(key)) return false;
     this.journal.set(key, e);
+    this.changed();
     return true;
   }
   async listJournal(tenantId: string, recordId?: string) {
     return [...this.journal.values()].filter((e) => e.tenantId === tenantId && (!recordId || e.recordId === recordId)).sort((a, b) => a.createdAt - b.createdAt);
+  }
+  async getRuntimeState(tenantId: string, runtimeId: string) {
+    const s = this.runtime.get(this.k(tenantId, runtimeId));
+    if (!s) return null;
+    const { tenantId: _t, ...state } = s;
+    return state;
+  }
+  async putRuntimeState(tenantId: string, state: RuntimeState) {
+    this.runtime.set(this.k(tenantId, state.runtimeId), { ...state, tenantId });
+    this.changed();
   }
 }
 

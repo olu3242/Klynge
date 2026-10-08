@@ -1,10 +1,12 @@
 /**
- * End-to-end certification (run after `next build`): starts `next start` with the mock extractor and a test clock,
- * drives the real UI in Chromium, and asserts the visual/data boundary, layout, accessibility and log hygiene.
+ * End-to-end certification (run after `next build`). Starts `next start` in TEST MODE: mock extractor, mock auth
+ * (Google OAuth + magic link, HMAC-signed), mock market-data provider over a recorded fixture, file store (so a
+ * real process restart can be certified) and an injectable clock. Drives the real UI in Chromium.
  * No network, no credentials, no model calls.
  */
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { chromium } from "playwright-core";
 
@@ -15,7 +17,9 @@ const T = 1_780_000_000_000;
 const MIN = 60_000;
 const img = (id) => path.join(ROOT, "test/corpus/images", `${id}.png`);
 const OHLCV = path.join(ROOT, "test/fixtures/ohlcv-call.json");
+const END = JSON.parse(readFileSync(OHLCV, "utf8")).asOf;
 const DIRECTIONAL = /CALL_SETUP|PUT_SETUP|ELIGIBLE|CONDITIONS MET/;
+const STATE_DIR = mkdtempSync(path.join(tmpdir(), "klynge-e2e-"));
 const results = [];
 let logs = "";
 
@@ -24,16 +28,34 @@ function check(name, ok, detail = "") {
   console.log(`${ok ? "✓" : "✗"} ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
-const server = spawn(process.execPath, [path.join(ROOT, "node_modules/next/dist/bin/next"), "start", "-p", String(PORT), "-H", "127.0.0.1"], {
-  cwd: ROOT,
-  env: { ...process.env, KLYNGE_EXTRACTOR: "mock", KLYNGE_STORE: "memory", KLYNGE_IMAGE_RETENTION: "SESSION", KLYNGE_TEST_CLOCK: "1", NODE_ENV: "production" },
-  stdio: ["ignore", "pipe", "pipe"],
-});
-server.stdout.on("data", (d) => (logs += d));
-server.stderr.on("data", (d) => (logs += d));
+const SERVER_ENV = {
+  ...process.env,
+  NODE_ENV: "production",
+  KLYNGE_TEST_MODE: "1",
+  KLYNGE_AUTH: "mock",
+  KLYNGE_TEST_AUTH_SECRET: "e2e-only-secret-not-for-production",
+  KLYNGE_EXTRACTOR: "mock",
+  KLYNGE_PROVIDER: "mock",
+  KLYNGE_STORE: "file",
+  KLYNGE_STORE_FILE: path.join(STATE_DIR, "store.json"),
+  KLYNGE_IMAGE_RETENTION: "SESSION",
+};
 
-async function waitForServer() {
-  for (let i = 0; i < 120; i++) {
+let server;
+async function portBusy() {
+  try {
+    await fetch(`${BASE}/app`, { redirect: "manual" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function startServer() {
+  if (await portBusy()) throw new Error(`port ${PORT} is already in use — stop the stale server first (or set E2E_PORT)`);
+  server = spawn(process.execPath, [path.join(ROOT, "node_modules/next/dist/bin/next"), "start", "-p", String(PORT), "-H", "127.0.0.1"], { cwd: ROOT, env: SERVER_ENV, stdio: ["ignore", "pipe", "pipe"] });
+  server.stdout.on("data", (d) => (logs += d));
+  server.stderr.on("data", (d) => (logs += d));
+  for (let i = 0; i < 160; i++) {
     try {
       if ((await fetch(`${BASE}/app`, { redirect: "manual" })).status < 500) return;
     } catch {
@@ -43,20 +65,32 @@ async function waitForServer() {
   }
   throw new Error(`server did not start:\n${logs}`);
 }
+async function stopServer() {
+  if (!server) return;
+  const exited = new Promise((r) => server.once("exit", r));
+  server.kill("SIGTERM");
+  await Promise.race([exited, new Promise((r) => setTimeout(r, 5000))]);
+  server = undefined;
+}
 
-const browser = await (async () => {
-  await waitForServer();
-  return chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
-})();
+await startServer();
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 
-async function workspace(now) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, extraHTTPHeaders: { "x-klynge-now": String(now) } });
+async function workspace(now, viewport = { width: 1440, height: 900 }) {
+  const context = await browser.newContext({ viewport, extraHTTPHeaders: { "x-klynge-now": String(now) } });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   await page.goto(`${BASE}/app`);
-  const clock = (t) => context.setExtraHTTPHeaders({ "x-klynge-now": String(t) });
+  let headers = { "x-klynge-now": String(now) };
+  const setHeaders = (h) => {
+    headers = { ...headers, ...h };
+    for (const [k, v] of Object.entries(headers)) if (v === null) delete headers[k];
+    return context.setExtraHTTPHeaders(headers);
+  };
+  const clock = (t) => setHeaders({ "x-klynge-now": String(t) });
+  const scenario = (s) => setHeaders({ "x-klynge-provider-scenario": s });
   const upload = async (id, t, { role } = {}) => {
     await clock(t);
     if (role) await page.getByLabel("Chart role").selectOption(role);
@@ -68,11 +102,49 @@ async function workspace(now) {
   const label = () => page.getByTestId("visual-label").innerText();
   const permission = () => page.getByTestId("visual-permission").innerText();
   const status = (role, field) => page.locator(`[data-testid=chart-${role}] tr[data-field=${field}] [data-status]`).getAttribute("data-status");
-  return { context, page, errors, clock, upload, label, permission, status };
+  // Direct API probes share the browser context's cookies + headers but never touch the page (no console noise).
+  const api = async (url, init = {}) => {
+    const r = await context.request.fetch(`${BASE}${url}`, { method: init.method ?? "GET", headers: init.headers ?? {}, ...(init.body ? { data: init.body } : {}) });
+    let body = null;
+    try {
+      body = await r.json();
+    } catch {
+      // empty body
+    }
+    return { status: r.status(), body };
+  };
+  return { context, page, errors, clock, scenario, upload, label, permission, status, api };
 }
 
+async function signInGoogle(w, email) {
+  await w.page.goto(`${BASE}/sign-in?next=/app`);
+  await w.page.getByRole("button", { name: "Continue with Google" }).click();
+  await w.page.waitForURL(/\/auth\/mock\/google/);
+  await w.page.getByLabel("Google account email").fill(email);
+  await w.page.getByRole("button", { name: "Continue" }).click();
+  await w.page.waitForURL(/\/app/);
+}
+async function signInMagicLink(w, email) {
+  await w.page.goto(`${BASE}/sign-in?next=/app`);
+  await w.page.getByLabel("Email address").fill(email);
+  await w.page.getByRole("button", { name: "Email me a sign-in link" }).click();
+  await w.page.getByTestId("magic-link-sent").waitFor();
+  const outbox = await w.api(`/api/test/outbox?email=${encodeURIComponent(email)}`);
+  if (outbox.status !== 200) throw new Error("no magic link in the test outbox");
+  await w.page.goto(new URL(outbox.body.link, BASE).toString());
+  await w.page.waitForURL(/\/app/);
+}
+const connect = async (w, symbol) => {
+  const done = w.page.waitForResponse((r) => r.url().endsWith("/api/data/connect"));
+  if (symbol) await w.page.getByTestId("data-connect").getByLabel(/^Symbol/).fill(symbol);
+  await w.page.getByRole("button", { name: "Connect verified data" }).click();
+  await done;
+  await w.page.getByTestId("runtime-status").waitFor();
+  return { status: await w.page.getByTestId("runtime-status").getAttribute("data-status"), text: await w.page.getByTestId("runtime-status").innerText() };
+};
+
 try {
-  // 1. Intake flow: TSLA → missing context → SPX + MNQ → BULLISH CONTEXT / WAIT.
+  // ── 1. Anonymous trial: TSLA → missing context → SPX + MNQ → BULLISH CONTEXT / WAIT ──────────────────
   const w = await workspace(T);
   await w.upload("tsla-5m-bull", T);
   check("TSLA alone => INSUFFICIENT CONTEXT", (await w.label()) === "INSUFFICIENT CONTEXT", await w.label());
@@ -86,37 +158,58 @@ try {
   check("risk notice visible", await w.page.getByText("Klynge is not financial advice.").first().isVisible());
   const visualText = await w.page.locator("main").innerText();
   check("no CALL/PUT/ELIGIBLE language in VISUAL mode", !DIRECTIONAL.test(visualText));
+  check("evidence mode shown: VISUAL ANALYSIS / data verification required", (await w.page.getByTestId("evidence-mode").getAttribute("data-mode")) === "VISUAL" && /VISUAL ANALYSIS[\s\S]*Data verification required/.test(await w.page.getByTestId("evidence-mode").innerText()));
+  check("anonymous upload works as a trial (trial notice shown)", await w.page.getByTestId("trial-notice").isVisible());
 
-  // 2. Confirmation (audited, USER_CONFIRMED).
+  // ── 2. Anonymous cannot persist ─────────────────────────────────────────────────────────────────────
+  const anonJournal = await w.api("/api/journal", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ recordId: "x", note: "n" }) });
+  const anonOhlcv = await w.api("/api/ohlcv", { method: "POST", headers: { "content-type": "application/json" }, body: readFileSync(OHLCV, "utf8") });
+  const anonConnect = await w.api("/api/data/connect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ symbol: "TSLA" }) });
+  const anonHistory = await w.api("/api/history");
+  check("anonymous cannot persist journal / decisions / data / history (401)", [anonJournal, anonOhlcv, anonConnect, anonHistory].every((r) => r.status === 401), [anonJournal, anonOhlcv, anonConnect, anonHistory].map((r) => r.status).join(","));
+  check("anonymous has no persisted alerts", (await w.api("/api/workspace")).body.alerts.length === 0);
+  await w.page.goto(`${BASE}/app/history`);
+  check("protected route: /app/history redirects anonymous users to sign-in", w.page.url().includes("/sign-in"));
+  await w.page.goto(`${BASE}/app`);
+
+  // ── 3. Confirmation + stale set (still anonymous) ───────────────────────────────────────────────────
   await w.page.locator("[data-testid=chart-TARGET]").getByRole("button", { name: "Confirm Symbol" }).click();
   await w.page.locator("[data-testid=chart-TARGET] tr[data-field=symbol] [data-status=USER_CONFIRMED]").waitFor();
   check("confirm field => USER_CONFIRMED", (await w.status("TARGET", "symbol")) === "USER_CONFIRMED");
-
-  // 3. Stale set (re-evaluated 30 min later) => BLOCKED.
   await w.clock(T + 30 * MIN);
   await w.page.locator("[data-testid=chart-SPX]").getByRole("button", { name: "Confirm Symbol" }).click();
   await w.page.getByTestId("visual-permission").filter({ hasText: "BLOCKED" }).waitFor();
   check("stale chart set => BLOCKED", (await w.permission()).includes("BLOCKED"));
 
-  // 4. DATA mode: OHLCV fixture => CALL_SETUP (only DATA can produce a setup).
+  // ── 4. Google OAuth (mock) + explicit anonymous promotion ───────────────────────────────────────────
   await w.clock(T + 31 * MIN);
+  await signInGoogle(w, "ada@example.com");
+  check("Google OAuth sign-in (mock) => signed in", (await w.page.getByTestId("account-email").innerText()) === "ada@example.com");
+  const promptVisible = await w.page.getByTestId("promotion-prompt").isVisible();
+  check("anonymous promotion is explicit: 'Save this analysis to your account?'", promptVisible && (await w.page.getByTestId("visual-context").count()) === 0, "nothing copied before acceptance");
+  await w.page.getByRole("button", { name: "Save to my account" }).click();
+  await w.page.getByTestId("visual-context").waitFor();
+  check("accepted promotion copies the trial into the account", (await w.page.locator("[data-testid^=chart-]").count()) === 3);
+
+  // ── 5. DATA mode via OHLCV import (authenticated persistence) ───────────────────────────────────────
   const imported = w.page.waitForResponse((r) => r.url().endsWith("/api/ohlcv"));
   await w.page.locator('input[type=file][accept^="application/json"]').setInputFiles(OHLCV);
   await imported;
   await w.page.getByTestId("data-decision-value").waitFor();
   check("OHLCV fixture => CALL_SETUP (DATA mode)", (await w.page.getByTestId("data-decision-value").innerText()) === "CALL_SETUP");
   check("visual card still WAIT/BLOCKED after DATA", /WAIT|BLOCKED/.test(await w.permission()));
-
-  // 5. Journal + history.
   await w.page.getByLabel(/Note on the latest analysis/).fill("Waiting for the retest to hold.");
   await w.page.getByRole("button", { name: "Add note" }).click();
   await w.page.getByText("Waiting for the retest to hold.").waitFor();
   check("journal note added", true);
+  const userAState = await w.api("/api/workspace");
+  const recordA = userAState.body.latestRecordId;
   await w.page.goto(`${BASE}/app/history`);
   const historyText = await w.page.locator("main").innerText();
   check("history lists VISUAL and DATA analyses", historyText.includes("VISUAL") && historyText.includes("DATA") && historyText.includes("TSLA"));
+  check("authenticated persistence: promoted trial carries origin ANONYMOUS_TRIAL", historyText.includes("Saved trial"));
 
-  // 6. Layout: no horizontal overflow at standard widths.
+  // ── 6. Layout + accessibility ───────────────────────────────────────────────────────────────────────
   for (const page of ["/app", "/app/history"]) {
     await w.page.goto(`${BASE}${page}`);
     for (const width of [1440, 1280, 1024, 768, 430, 390]) {
@@ -125,29 +218,83 @@ try {
       check(`no horizontal overflow ${page} @${width}`, overflow <= 0, overflow > 0 ? `${overflow}px` : "");
     }
   }
-
-  // 7. Accessibility basics.
   await w.page.setViewportSize({ width: 1440, height: 900 });
+  const a11yOf = () =>
+    w.page.evaluate(() => {
+      const problems = [];
+      if (!document.documentElement.lang) problems.push("html lang missing");
+      if (document.querySelectorAll("h1").length !== 1) problems.push(`h1 count ${document.querySelectorAll("h1").length}`);
+      if (!document.querySelector("main")) problems.push("no main landmark");
+      if (!document.querySelector('a[href="#main"], a[href="#content"]')) problems.push("no skip link");
+      for (const el of document.querySelectorAll("input, select, textarea")) {
+        const labelled = (el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`)) || el.getAttribute("aria-label") || el.closest("label");
+        if (!labelled && el.type !== "hidden") problems.push(`unlabelled ${el.tagName.toLowerCase()}#${el.id}`);
+      }
+      for (const b of document.querySelectorAll("button, a[href]")) if (!(b.textContent || "").trim() && !b.getAttribute("aria-label")) problems.push(`unnamed ${b.tagName.toLowerCase()}`);
+      for (const i of document.querySelectorAll("img")) if (!i.hasAttribute("alt")) problems.push("img without alt");
+      return problems;
+    });
   await w.page.goto(`${BASE}/app`);
-  const a11y = await w.page.evaluate(() => {
-    const problems = [];
-    if (!document.documentElement.lang) problems.push("html lang missing");
-    if (document.querySelectorAll("h1").length !== 1) problems.push(`h1 count ${document.querySelectorAll("h1").length}`);
-    if (!document.querySelector("main")) problems.push("no main landmark");
-    if (!document.querySelector('a[href="#main"], a[href="#content"]')) problems.push("no skip link");
-    for (const el of document.querySelectorAll("input, select, textarea")) {
-      const labelled = (el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`)) || el.getAttribute("aria-label") || el.closest("label");
-      if (!labelled && el.type !== "hidden") problems.push(`unlabelled ${el.tagName.toLowerCase()}#${el.id}`);
-    }
-    for (const b of document.querySelectorAll("button, a[href]")) if (!(b.textContent || "").trim() && !b.getAttribute("aria-label")) problems.push(`unnamed ${b.tagName.toLowerCase()}`);
-    for (const i of document.querySelectorAll("img")) if (!i.hasAttribute("alt")) problems.push("img without alt");
-    return problems;
-  });
+  const a11y = await a11yOf();
   check("accessibility basics", a11y.length === 0, a11y.join("; "));
   check("no browser console errors", w.errors.length === 0, w.errors.slice(0, 3).join(" | "));
-  await w.context.close();
 
-  // 8. Skewed chart set => BLOCKED.
+  // ── 7. Magic link (mock) + VISUAL → DATA handoff via the provider ───────────────────────────────────
+  const b = await workspace(END - 5 * MIN);
+  await signInMagicLink(b, "bea@example.com");
+  check("magic-link sign-in (mock) => signed in", (await b.page.getByTestId("account-email").innerText()) === "bea@example.com");
+  await b.upload("tsla-5m-bull", END - 5 * MIN);
+  check("authenticated upload => VISUAL ANALYSIS first", (await b.page.getByTestId("evidence-mode").getAttribute("data-mode")) === "VISUAL");
+  await b.clock(END);
+  const good = await connect(b);
+  check("provider good path => DATA VERIFIED", good.status === "DATA_VERIFIED", good.text);
+  check("visual → data handoff: DATA decision from verified data (CALL_SETUP)", (await b.page.getByTestId("data-decision-value").innerText()) === "CALL_SETUP");
+  const banner = await b.page.getByTestId("evidence-mode").innerText();
+  check("mode transition visible: DATA VERIFIED · deterministic engine active", /DATA VERIFIED[\s\S]*Deterministic Klynge engine active/.test(banner) && (await b.page.getByTestId("evidence-transition").isVisible()));
+  check("provenance shown (provider, provider symbol, latest bar)", /SPX[\s\S]*mock I:SPX/.test(await b.page.getByTestId("data-provenance").innerText()));
+  const opt = await b.page.getByTestId("options-state").innerText();
+  check("options remain downstream (no chain => not eligible; setup unchanged)", !/: ELIGIBLE/.test(opt) && (await b.page.getByTestId("data-decision-value").innerText()) === "CALL_SETUP", opt);
+  const alertsBefore = (await b.api("/api/workspace")).body.alerts.length;
+  const again = await connect(b);
+  check("same market state => unchanged (idempotent)", again.status === "UNCHANGED", again.text);
+  check("alert idempotency: no duplicate alerts on reprocessing", (await b.api("/api/workspace")).body.alerts.length === alertsBefore, String(alertsBefore));
+
+  // ── 8. Cross-user denial (ownership is server-derived; body/query tenant ids ignored) ────────────────
+  const bHistory = await b.api("/api/history");
+  check("cross-user denial: B never sees A's history", bHistory.status === 200 && bHistory.body.every((r) => r.recordId !== recordA));
+  const forged = await b.api("/api/journal", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ recordId: recordA, note: "write into A", tenantId: "ignored", userId: "ignored" }) });
+  check("cross-user denial: B cannot annotate A's record, even naming A's ids", forged.status === 404, String(forged.status));
+  const bByQuery = await b.api(`/api/history?tenantId=${encodeURIComponent("anything")}`);
+  check("query-parameter ownership ignored", bByQuery.status === 200 && bByQuery.body.every((r) => r.recordId !== recordA));
+
+  // ── 9. Provider failure paths (offline scenarios) ───────────────────────────────────────────────────
+  for (const [scenario, expected, text] of [["stale", "BLOCKED", /stale/i], ["missing-bar", "BLOCKED", /missing bars/i], ["outage", "BLOCKED", /unavailable/i]]) {
+    await b.scenario(scenario);
+    const r = await connect(b, "TSLA");
+    check(`provider ${scenario} path => ${expected}`, r.status === expected && text.test(r.text), r.text.replace(/\s+/g, " "));
+  }
+  await b.scenario(null);
+
+  // ── 10. Runtime restart: durable state resumes; previous decision restored ──────────────────────────
+  await stopServer();
+  await startServer();
+  await b.clock(END + 10 * MIN);
+  await b.page.goto(`${BASE}/app`);
+  check("after restart: persisted DATA decision still shown", (await b.page.getByTestId("data-decision-value").innerText()) === "CALL_SETUP");
+  const resumed = await connect(b, "TSLA");
+  check("runtime restart => previous decision restored, no blank state", resumed.status === "UNCHANGED" && /previous decision restored/i.test(resumed.text), resumed.text);
+  check("signed-in session survives restart (verified, not re-created)", (await b.page.getByTestId("account-email").innerText()) === "bea@example.com");
+  check("no browser console errors (data journeys)", b.errors.length === 0, b.errors.slice(0, 3).join(" | "));
+  await b.page.goto(`${BASE}/sign-in`);
+  for (const width of [1440, 390]) {
+    await b.page.setViewportSize({ width, height: 900 });
+    const overflow = await b.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    check(`no horizontal overflow /sign-in @${width}`, overflow <= 0, overflow > 0 ? `${overflow}px` : "");
+  }
+  await w.context.close();
+  await b.context.close();
+
+  // ── 11. Skewed chart set => BLOCKED (anonymous) ─────────────────────────────────────────────────────
   const s = await workspace(T);
   await s.upload("tsla-5m-bull", T);
   await s.upload("spx-5m-bull", T + MIN);
@@ -156,32 +303,38 @@ try {
   check("skewed chart set => BLOCKED", (await s.permission()).includes("BLOCKED"));
   await s.context.close();
 
-  // 9. Low confidence => NOT_VERIFIED; broker screenshot does not leak account text into the UI.
+  // ── 12. Low confidence => NOT_VERIFIED; broker screenshot does not leak account text ───────────────
   const n = await workspace(T);
   await n.upload("nvda-5m-ambiguous", T);
   await n.page.locator("[data-testid=chart-TARGET] tr[data-field=structure] [data-status]").waitFor();
   check("low-confidence structure => NOT_VERIFIED", (await n.status("TARGET", "structure")) === "NOT_VERIFIED");
   await n.context.close();
-  const b = await workspace(T);
-  await b.upload("broker-balance-tsla", T);
-  check("broker account text not echoed in UI", !/4471|12,345/.test(await b.page.locator("main").innerText()));
-  await b.context.close();
+  const bb = await workspace(T);
+  await bb.upload("broker-balance-tsla", T);
+  check("broker account text not echoed in UI", !/4471|12,345/.test(await bb.page.locator("main").innerText()));
+  await bb.context.close();
 
-  // 10. API hardening.
-  const bad = await fetch(`${BASE}/api/charts`, { method: "POST", headers: { cookie: "klynge_tenant=t; klynge_session=s" }, body: (() => { const f = new FormData(); f.set("chart", new Blob(["<svg/>"], { type: "image/png" }), "x.png"); return f; })() });
+  // ── 13. API hardening ───────────────────────────────────────────────────────────────────────────────
+  const fd = new FormData();
+  fd.set("chart", new Blob(["<svg/>"], { type: "image/png" }), "x.png");
+  const bad = await fetch(`${BASE}/api/charts`, { method: "POST", body: fd });
   check("spoofed image type rejected (415)", bad.status === 415, String(bad.status));
+  const forgedCookie = await fetch(`${BASE}/api/history`, { headers: { cookie: `klynge_mock_session=${Buffer.from(JSON.stringify({ sub: "x" })).toString("base64url")}.AAAA; klynge_session=${crypto.randomUUID()}; klynge_trial=${crypto.randomUUID()}` } });
+  check("forged auth cookie is not a user (401)", forgedCookie.status === 401, String(forgedCookie.status));
+  const openRedirect = await fetch(`${BASE}/auth/callback?next=${encodeURIComponent("https://evil.example")}&code=bad`, { redirect: "manual" });
+  check("auth callback never redirects off-site", !String(openRedirect.headers.get("location")).includes("evil.example"), openRedirect.headers.get("location") ?? "");
 } catch (e) {
   check("e2e run", false, e.stack ?? String(e));
 } finally {
   await browser.close();
-  server.kill("SIGTERM");
-  await new Promise((r) => setTimeout(r, 300));
+  await stopServer();
 }
 
-// 11. Log hygiene: no image bytes, no account text, no raw tenant ids.
+// ── 14. Log hygiene: no image bytes, account text, auth tokens, emails or secrets ─────────────────────
 const png = readFileSync(img("broker-balance-tsla")).toString("base64");
-const leaks = ["iVBORw0KGgo", png.slice(200, 260), "4471-0098", "data:image/"].filter((m) => logs.includes(m));
+const leaks = ["iVBORw0KGgo", png.slice(200, 260), "4471-0098", "data:image/", "eyJ", "e2e-only-secret", "ada@example.com", "bea@example.com", "service_role"].filter((m) => logs.includes(m));
 check("server logs contain no image data or account text", leaks.length === 0, leaks.join(", "));
+rmSync(STATE_DIR, { recursive: true, force: true });
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\ne2e: ${results.length - failed.length}/${results.length} checks passed`);

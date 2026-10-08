@@ -1,6 +1,6 @@
-export const KLYNGE_ENGINE_VERSION = "0.4.0";
+export const KLYNGE_ENGINE_VERSION = "0.5.0";
 
-export const KLYNGE_RULE_VERSION = "visual-intake-v1";
+export const KLYNGE_RULE_VERSION = "auth-live-data-v1";
 
 /** Historical rule provenance. Never delete entries — recorded decisions reference them. */
 export const KLYNGE_RULE_HISTORY = Object.freeze([
@@ -19,6 +19,11 @@ export const KLYNGE_RULE_HISTORY = Object.freeze([
     engineVersion: "0.4.0",
     ruleVersion: "visual-intake-v1",
     summary: "Evidence modes (VISUAL/DATA), field provenance, visual validation + context, chart sessions, confirmations, snapshots, alerts.",
+  }),
+  Object.freeze({
+    engineVersion: "0.5.0",
+    ruleVersion: "auth-live-data-v1",
+    summary: "Provider contracts, symbol mapping, feed normalization + provenance, fail-closed provider failures, DATA runtime with restored lifecycle memory, idempotency, restart recovery, visual→data handoff (hints only), runtime alerts.",
   }),
 ] as const);
 

@@ -25,3 +25,7 @@ Rules:
    `apps/web/.next/static` exists. Banned marketing language is also scanned in app client sources.
 7. VISUAL results never use CALL SETUP / PUT SETUP / CONDITIONS MET / eligibility language and always show
    "Conditions observed — data verification required" plus the compact risk notice.
+8. PRODUCT may show state, reasons, missing conditions, risk level, evidence mode and data provenance (provider, provider
+   symbol, latest bar). It may NOT expose threshold formulas, ATR multipliers, R:R internals, state-machine thresholds,
+   provider normalization internals, options ranking internals or agent prompts. The root scanner checks app client
+   sources for these patterns and the bundle guard checks built chunks (plus service-role names, JWTs and test-only machinery).
