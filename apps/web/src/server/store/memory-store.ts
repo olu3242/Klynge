@@ -66,6 +66,16 @@ export class MemorySessionStore implements SessionStore {
     this.runtime.set(this.k(tenantId, state.runtimeId), { ...state, tenantId });
     this.changed();
   }
+  /** Infrastructure view for operator monitoring (in-process stores only). Never served to users. */
+  infrastructureSnapshot(): { records: DecisionRecord[]; runtime: (RuntimeState & { tenantId: string })[]; alerts: (StateAlert & { tenantId: string })[] } {
+    return { records: [...this.records.values()], runtime: [...this.runtime.values()], alerts: [...this.alerts.values()] };
+  }
+  /** Deterministic recovery: drop a corrupted runtime cursor (the next verified evaluation rebuilds it idempotently). */
+  quarantineRuntimeState(tenantId: string, runtimeId: string): boolean {
+    const ok = this.runtime.delete(this.k(tenantId, runtimeId));
+    if (ok) this.changed();
+    return ok;
+  }
 }
 
 /** In-memory image cache honoring the retention policy (NONE = never kept; SESSION = until session purge). */

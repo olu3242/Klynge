@@ -22,6 +22,8 @@ export const MARKERS = [
   /You read trading chart screenshots|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY|sk-ant-[A-Za-z0-9]/,
   // auth + service role + test-only machinery
   /service_role|serviceRoleClient|SERVICE_ROLE_OPERATIONS|KLYNGE_TEST_AUTH_SECRET|klynge_mock_session|x-klynge-provider-scenario|KLYNGE_PROVIDER_API_KEY|POLYGON_API_KEY|RESEND_API_KEY|KLYNGE_CRON_SECRET|api\.polygon\.io|api\.resend\.com/,
+  // 0.7.0 pilot-readiness internals: evaluation, futures, worker, operator monitoring, CME credentials
+  /pilot-readiness-v1|sealHoldout|outOfSampleReport|decisionAnalytics|calibrationView|replayDays|activeContract|aggregateBars|detectCorporateActions|runNotificationWorker|klynge_claim_notifications|klynge_complete_notification|runtimeCorruption|quarantineCorruptedRuntime|KLYNGE_ADMIN_EMAILS|DATABENTO_API_KEY|GLBX\.MDP3|hist\.databento\.com/,
   // raw JWTs (no token may be compiled into a browser chunk)
   /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}/,
 ];

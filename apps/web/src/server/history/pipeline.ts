@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { auditBars, buildManifest, canonicalJson, detectCorrections, normalizeFeed, verifyManifest } from "../engine-core.ts";
-import type { Candle, DatasetIssue, DatasetKind, DatasetLicense, DatasetManifest, FeedPlan, MarketDataProvider, SessionCalendar, Timeframe, TradingSession } from "../engine-core.ts";
+import { auditBars, buildManifest, canonicalJson, detectCorporateActions, detectCorrections, normalizeFeed, verifyManifest } from "../engine-core.ts";
+import type { Candle, DatasetIssue, DatasetKind, DatasetLicense, DatasetManifest, FeedPlan, MarketDataProvider, PriceAdjustment, SessionCalendar, Timeframe, TradingSession } from "../engine-core.ts";
 
 /**
  * Reproducible historical ingestion. Layout (operator storage, never committed, never served to browsers):
@@ -69,6 +69,7 @@ export interface IngestInput {
   license: DatasetLicense;
   acquiredAt: number;
   store: DatasetStore;
+  adjustment?: PriceAdjustment;
 }
 
 export interface IngestResult {
@@ -92,8 +93,13 @@ export async function ingestHistory(i: IngestInput): Promise<IngestResult> {
     .filter((m) => m.provider === i.provider.id && m.canonicalSymbol === i.plan.canonicalSymbol && m.timeframe === i.timeframe && m.from === i.from && m.to === i.to)
     .at(-1);
   const corrections = prior ? detectCorrections(i.store.normalized(prior.datasetId).flatMap((s) => s.candles), sessions.flatMap((s): Candle[] => s.candles)) : [];
-  const issues = [...audit, ...corrections, ...(norm.ok ? [] : [{ kind: "STALE" as const, at: i.to, detail: `normalization failed: ${norm.failure.code}` }])].filter((x, idx, arr) => arr.findIndex((y) => y.kind === x.kind && y.at === x.at) === idx);
-  const manifest = buildManifest({ kind: i.kind, provider: i.provider.id, providerSymbol: i.plan.providerSymbol, canonicalSymbol: i.plan.canonicalSymbol, timeframe: i.timeframe, from: i.from, to: i.to, acquiredAt: i.acquiredAt, rawText, normalized: sessions, issues, license: i.license });
+  const corporate = detectCorporateActions(sessions);
+  const contract = res.warnings.find((w) => w.startsWith("front contract "))?.split(" ")[2];
+  const issues = [...audit, ...corrections, ...corporate, ...(norm.ok ? [] : [{ kind: "STALE" as const, at: i.to, detail: `normalization failed: ${norm.failure.code}` }])].filter((x, idx, arr) => arr.findIndex((y) => y.kind === x.kind && y.at === x.at) === idx);
+  const base = { kind: i.kind, provider: i.provider.id, providerSymbol: i.plan.providerSymbol, canonicalSymbol: i.plan.canonicalSymbol, timeframe: i.timeframe, from: i.from, to: i.to, acquiredAt: i.acquiredAt, rawText, normalized: sessions, issues, license: i.license, adjustment: i.adjustment ?? (contract ? ("FRONT_CONTRACT" as const) : ("SPLIT_ADJUSTED" as const)), ...(contract ? { contract } : {}) };
+  // Version chain: identical content keeps the prior id; different content supersedes it (never overwritten).
+  const probe = buildManifest(base);
+  const manifest = prior && probe.normalizedSha256 !== prior.normalizedSha256 ? buildManifest({ ...base, supersedes: prior.datasetId, version: (prior.version ?? 1) + 1 }) : prior && probe.normalizedSha256 === prior.normalizedSha256 ? prior : buildManifest({ ...base, supersedes: null, version: 1 });
   i.store.put(manifest, rawText, sessions);
   return { manifest, issues, corrections, normalizedOk: norm.ok, ...(norm.ok ? {} : { failure: norm.failure.message }) };
 }

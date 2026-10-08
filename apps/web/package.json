@@ -16,7 +16,9 @@
     "e2e": "node scripts/e2e.mjs",
     "check": "npm run typecheck && npm run lint && npm test && npm run test:rls && npm run build && npm run bundle:check && npm run e2e",
     "test:rls": "node --test --test-timeout=120000 \"test/rls/*.test.ts\"",
-    "rls:hosted": "node --conditions=react-server scripts/rls-hosted.ts"
+    "rls:hosted": "node --conditions=react-server scripts/rls-hosted.ts",
+    "worker:notifications": "node --conditions=react-server scripts/notification-worker.ts",
+    "readiness:hosted": "node --conditions=react-server scripts/hosted-readiness.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.0",

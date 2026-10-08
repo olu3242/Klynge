@@ -2,6 +2,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { barsFromSessions, cmeEquityIndexCalendar, FailingProvider, fixedSessionCalendar, MalformedProvider, MockHistoricalProvider, nyseCalendar, StaleProvider } from "./engine-core.ts";
 import type { FeedRole, MarketDataProvider, SessionCalendar, SymbolMap, TimeframePolicy, TradingSession } from "./engine-core.ts";
+import { CmeFuturesProvider } from "./providers/cme-futures.ts";
+import { DatabentoBarsSource } from "./providers/databento.ts";
+import type { FuturesBarsSource } from "./providers/cme-futures.ts";
 import { PolygonProvider } from "./providers/polygon.ts";
 import { ResilientProvider } from "./providers/resilient.ts";
 import type { ProviderHealth } from "./providers/resilient.ts";
@@ -54,7 +57,7 @@ const TF = ["5m", "15m", "1h", "1d"] as const;
  * licensed source in this adapter, so DATA mode fails closed (ENTITLEMENT_MISSING) until a CME futures adapter is
  * configured. Nothing is substituted.
  */
-export function polygonMarketData(env: Readonly<Record<string, string | undefined>>, fetchImpl?: typeof fetch): MarketDataSetup {
+export function polygonMarketData(env: Readonly<Record<string, string | undefined>>, fetchImpl?: typeof fetch, futuresSource?: FuturesBarsSource): MarketDataSetup {
   const apiKey = env.POLYGON_API_KEY;
   if (!apiKey) throw new Error("KLYNGE_PROVIDER=polygon requires the server-only POLYGON_API_KEY");
   const plans = new Set((env.KLYNGE_POLYGON_PLANS ?? "stocks").split(",").map((p) => p.trim().toLowerCase()));
@@ -62,18 +65,27 @@ export function polygonMarketData(env: Readonly<Record<string, string | undefine
   const entitlements: Entitlement[] = [];
   if (plans.has("indices")) entitlements.push({ canonicalSymbol: "SPX", providerSymbol: "I:SPX", timeframes: TF, assetClass: "index" });
   if (plans.has("stocks")) entitlements.push({ canonicalSymbol: "SPY", providerSymbol: "SPY", timeframes: TF, assetClass: "etf (volume proxy only)" });
-  const routed = new RoutedProvider("polygon", [{ provider: polygon, entitlements, ...(plans.has("stocks") ? { equityPassThrough: TF } : {}) }]);
+  const routes: ConstructorParameters<typeof RoutedProvider>[1][number][] = [{ provider: polygon, entitlements, ...(plans.has("stocks") ? { equityPassThrough: TF } : {}) }];
+  // CME futures (MNQ) only through a licensed CME source; otherwise MNQ stays unlicensed (fail closed).
+  const source = futuresSource ?? (env.DATABENTO_API_KEY ? new DatabentoBarsSource({ apiKey: env.DATABENTO_API_KEY, licensedDatasets: (env.KLYNGE_DATABENTO_DATASETS ?? "").split(",").map((d) => d.trim()).filter(Boolean), ...(fetchImpl ? { fetch: fetchImpl } : {}) }) : null);
+  const cmeHealth: ResilientProvider[] = [];
+  if (source) {
+    const cme = new ResilientProvider(new CmeFuturesProvider({ source, calendar: cmeEquityIndexCalendar(), roots: { "CME:MNQ": "MNQ" } }));
+    cmeHealth.push(cme);
+    routes.push({ provider: cme, entitlements: [{ canonicalSymbol: "MNQ", providerSymbol: "CME:MNQ", timeframes: TF, assetClass: "cme futures (front contract, rolled)" }] });
+  }
+  const routed = new RoutedProvider("polygon", routes);
   const symbolMap: SymbolMap = { provider: "polygon", entries: { SPX: "I:SPX", SPY: "SPY", MNQ: "CME:MNQ" }, passThroughUnmapped: true };
   assertNoSubstitution(symbolMap);
   return {
-    label: "Polygon/Massive aggregates",
+    label: source ? "Polygon/Massive aggregates + CME futures" : "Polygon/Massive aggregates",
     provider: routed,
     calendar: nyseCalendar(),
     calendars: { MNQ: cmeEquityIndexCalendar() },
     symbolMap,
     timeframePolicy: PROD_POLICY,
     historySessions: 20,
-    health: () => [polygon.health()],
+    health: () => [polygon.health(), ...cmeHealth.map((c) => c.health())],
     entitlements: routed.entitlements(),
     live: true,
   };

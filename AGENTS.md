@@ -10,7 +10,7 @@ Klynge is NOT a brokerage, an investment adviser, a guaranteed signal service, o
 |---|---|---|
 | `index.html`, `styles/`, `js/`, `public/` | PUBLIC | Landing page + brand assets → `dist/` |
 | `src/brand/tokens.json` | source of truth | Design tokens → `npm run brand` regenerates `styles/tokens.css`, SVG/PNG assets, kit, zip, manifest |
-| `src/klynge/` | INTERNAL | Deterministic engine: market truth, setup, MTF, options, visual intake, providers + DATA runtime, exchange calendars, datasets, calibration, backtests, user policies (`production-calibration-v1`, 0.6.0) |
+| `src/klynge/` | INTERNAL | Deterministic engine: market truth, setup, MTF, options, visual intake, providers + DATA runtime, exchange calendars, datasets, calibration, backtests, user policies, CME futures contracts, empirical evaluation (`pilot-readiness-v1`, 0.7.0) |
 | `apps/web/` | PRODUCT | Next.js App Router workspace: Supabase Auth, anonymous trial, chart intake, confirmation, VISUAL→DATA handoff, persistence (RLS), journal, alerts |
 | `docs/architecture/`, `docs/policies/` | INTERNAL | Engine spec, public/product/internal boundary |
 | `scripts/` | tooling | build, serve, brand pipeline, boundary scan, QA |
@@ -20,6 +20,7 @@ Klynge is NOT a brokerage, an investment adviser, a guaranteed signal service, o
 `npm run build` (site → `dist/`, engine → `build/engine/`) · `npm run qa` (Playwright landing QA) · `npm run check` (all).
 App (`cd apps/web`): `npm run typecheck` · `npm run lint` · `npm test` · `npm run build` · `npm run bundle:check` · `npm run e2e` · `npm run check` (all).
 Root shortcut: `npm run check:app`. RLS: `npm run test:rls` (local PostgreSQL, offline) · `npm run rls:hosted -- --confirm` (manual, after a deliberate migration).
+Operator (manual, never CI): `npm run readiness:hosted` · `npm run worker:notifications` · `scripts/history-ingest.ts` · `scripts/calibrate.ts`. Runbooks: `docs/runbooks/`.
 
 ## Authority hierarchy (absolute)
 ```
@@ -96,6 +97,24 @@ Non-negotiable (all earlier rules still apply):
    they never create signals and only go to the user's verified address.
 10. No secrets, thresholds or prompts in browser bundles. No hosted migration, push or deployment without explicit approval.
 Spec: `docs/architecture/production-readiness.md`.
+
+## Constitution amendment — pilot readiness (0.7.0)
+Non-negotiable (all earlier rules still apply):
+1. MNQ comes only from a licensed CME Globex source as the rolled FRONT contract of MNQ itself. NQ, QQQ or any other
+   instrument is never substituted; bars are aggregated on the CME calendar and empty buckets stay absent (never filled).
+2. Historical datasets are versioned and never overwritten: corrections supersede (`supersedes`, `version`); suspected
+   corporate actions are flagged, never silently adjusted. Synthetic fixtures are never empirical evidence.
+3. Empirical evaluation seals a chronological holdout BEFORE analysis; calibration uses only the pre-holdout view
+   (`calibrationView`); a leak throws `HoldoutViolation`. Reports carry `performanceClaim: "NONE"` and
+   `significance: NOT_ASSESSED`; option outcomes are reported separately (`NOT_EVALUATED` without licensed chains).
+4. Hosted notification delivery runs only as the scheduled worker (`notifications.dispatch`), never on a request path:
+   SKIP LOCKED claims, time-boxed leases, fenced completion, confirmed-recipient checks, per-tenant idempotency keys.
+5. Operators are server-derived (verified user + server-only `KLYNGE_ADMIN_EMAILS` + Supabase `app_metadata.klynge_role
+   = admin`). Operator views are aggregates only (no user identities, content, thresholds or credentials) and are
+   isolated from decisions: no operator action creates, edits or upgrades a decision.
+6. Hosted migrations, hosted certification and paid provider calls each require explicit, separate approval; a
+   blocked environment is reported as BLOCKED, never as passing.
+Spec: `docs/architecture/pilot-readiness.md` · Certification: `docs/certification/pilot-readiness-v1.md`.
 
 ## Canonical agents
 | Name | Identifier |

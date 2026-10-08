@@ -31,10 +31,11 @@ export class SupabaseAuthGateway implements AuthGateway {
     });
   }
 
-  private static toUser(u: { id: string; email?: string | null; app_metadata?: { provider?: string } } | null | undefined): VerifiedUser | null {
+  private static toUser(u: { id: string; email?: string | null; app_metadata?: { provider?: string; klynge_role?: unknown } } | null | undefined): VerifiedUser | null {
     if (!u?.id) return null;
     const p = u.app_metadata?.provider;
-    return { id: u.id, email: u.email ?? null, method: p === "google" ? "google" : p === "email" ? "email" : "unknown" };
+    const role = u.app_metadata?.klynge_role;
+    return { id: u.id, email: u.email ?? null, method: p === "google" ? "google" : p === "email" ? "email" : "unknown", ...(typeof role === "string" ? { appRole: role } : {}) };
   }
 
   /** Verified against Supabase Auth (getUser revalidates the JWT server-side; never trusts the cookie payload alone). */

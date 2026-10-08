@@ -28,7 +28,7 @@ export async function queueAlertNotification(account: AccountStore, tenantId: st
   const duplicate = existing.some((i) => i.symbol === alert.symbol && i.event === alert.event && i.status !== "SUPPRESSED" && now - i.createdAt < DEDUPE_WINDOW_MS);
   const { subject, text } = composeNotification(alert);
   const item: OutboxItem = {
-    notificationId: id(`${alert.alertId}|email`),
+    notificationId: id(`${tenantId}|${alert.alertId}|email`),
     tenantId,
     alertId: alert.alertId,
     channel: "email",

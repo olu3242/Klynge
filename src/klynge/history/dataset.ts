@@ -12,7 +12,10 @@ import { canonicalJson, sha256Hex } from "./sha256.ts";
  */
 export type DatasetKind = "HISTORICAL" | "SYNTHETIC";
 
-export type DatasetIssueKind = "MISSING_BARS" | "MISSING_SESSION" | "DUPLICATE" | "OUT_OF_ORDER" | "OUTSIDE_SESSION" | "CORRECTION" | "STALE";
+export type DatasetIssueKind = "MISSING_BARS" | "MISSING_SESSION" | "DUPLICATE" | "OUT_OF_ORDER" | "OUTSIDE_SESSION" | "CORRECTION" | "STALE" | "CORPORATE_ACTION_SUSPECTED";
+
+/** How prices relate to the traded instrument. */
+export type PriceAdjustment = "SPLIT_ADJUSTED" | "UNADJUSTED" | "FRONT_CONTRACT";
 
 export interface DatasetIssue {
   kind: DatasetIssueKind;
@@ -49,6 +52,12 @@ export interface DatasetManifest {
   license: DatasetLicense;
   engineVersion: string;
   ruleVersion: string;
+  adjustment?: PriceAdjustment;
+  /** Exchange contract the bars came from (futures). */
+  contract?: string;
+  /** Dataset this one replaces (vendor corrections / re-acquisition with different content). */
+  supersedes?: string | null;
+  version?: number;
 }
 
 /**
@@ -104,6 +113,10 @@ export function buildManifest(input: {
   normalized: readonly TradingSession[];
   issues: readonly DatasetIssue[];
   license: DatasetLicense;
+  adjustment?: PriceAdjustment;
+  contract?: string;
+  supersedes?: string | null;
+  version?: number;
 }): Readonly<DatasetManifest> {
   const normalizedSha256 = sha256Hex(canonicalJson(input.normalized));
   const rawSha256 = sha256Hex(input.rawText);
@@ -127,7 +140,28 @@ export function buildManifest(input: {
     license: { ...input.license },
     engineVersion: KLYNGE_ENGINE_VERSION,
     ruleVersion: KLYNGE_RULE_VERSION,
+    ...(input.adjustment ? { adjustment: input.adjustment } : {}),
+    ...(input.contract ? { contract: input.contract } : {}),
+    ...(input.supersedes !== undefined ? { supersedes: input.supersedes } : {}),
+    ...(input.version !== undefined ? { version: input.version } : {}),
   });
+}
+
+/**
+ * Session-to-session price discontinuities larger than `threshold` (fraction). On split-adjusted equity data these
+ * suggest an unadjusted corporate action (or a vendor fault); on futures they suggest a contract mix-up. Recorded as
+ * an issue for human review — prices are never "repaired".
+ */
+export function detectCorporateActions(sessions: readonly TradingSession[], threshold = 0.25): DatasetIssue[] {
+  const out: DatasetIssue[] = [];
+  for (let i = 1; i < sessions.length; i++) {
+    const prev = sessions[i - 1]?.candles.at(-1);
+    const next = sessions[i]?.candles[0];
+    if (!prev || !next || prev.close <= 0) continue;
+    const jump = next.open / prev.close - 1;
+    if (Math.abs(jump) > threshold) out.push({ kind: "CORPORATE_ACTION_SUSPECTED", at: next.timestamp, detail: `session gap ${(jump * 100).toFixed(1)}% vs prior close — verify splits/dividends/contract` });
+  }
+  return out;
 }
 
 /** Re-verify stored artifacts against their manifest (tamper / corruption detection). */

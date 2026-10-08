@@ -42,7 +42,10 @@ const SERVER_ENV = {
   KLYNGE_ACCOUNT_STORE_FILE: path.join(STATE_DIR, "account.json"),
   KLYNGE_EMAIL: "mock",
   KLYNGE_IMAGE_RETENTION: "SESSION",
+  KLYNGE_CRON_SECRET: "e2e-cron-secret-not-for-production-000000",
+  KLYNGE_ADMIN_EMAILS: "ops@example.com",
 };
+const CRON = SERVER_ENV.KLYNGE_CRON_SECRET;
 
 let server;
 async function portBusy() {
@@ -348,6 +351,62 @@ try {
   check("no browser console errors (production journeys)", c.errors.length === 0, c.errors.slice(0, 3).join(" | "));
   await c.context.close();
 
+  // ── 15. Pilot certification journeys (Batches 61–70; full matrix in docs/certification/pilot-readiness-v1.md) ──
+  const d = await workspace(END - 5 * MIN);
+  await d.page.goto(`${BASE}/app`);
+  check("J68: persistent risk disclosure banner (not financial advice; screenshots are visual evidence only)", (await d.page.getByTestId("risk-banner").isVisible()) && /not financial advice[\s\S]*visual evidence only/.test(await d.page.getByTestId("risk-banner").innerText()));
+  await signInGoogle(d, "dee@example.com");
+  await d.page.goto(`${BASE}/app/settings`);
+  await d.page.getByLabel(/Email me at my verified address/).check();
+  await d.page.getByLabel("Minimum importance").selectOption("INFO");
+  await d.page.getByRole("button", { name: "Save settings" }).click();
+  await d.page.getByTestId("settings-saved").waitFor();
+  await d.page.goto(`${BASE}/app`);
+  await d.upload("tsla-5m-bull", END - 5 * MIN);
+  await d.clock(END);
+  const deeMails = async () => ((await d.api(`/api/test/emails?to=${encodeURIComponent("dee@example.com")}`)).body ?? []).length;
+  const deeStatus = async () => JSON.stringify((await d.api("/api/status")).body?.notifications ?? null);
+  const sentBefore = await deeMails();
+  // The provider fails exactly one send during this connect (inline delivery); that item must wait for the worker.
+  const injected = await d.api("/api/test/emails", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ failNext: 1 }) });
+  await connect(d);
+  const pendingBefore = await deeStatus();
+  const sentAfterConnect = await deeMails();
+  check("J10: transient email outage => failed item kept PENDING for retry (others delivered)", injected.status === 200 && /"pending":1/.test(pendingBefore), pendingBefore);
+  const cron = (now, auth = `Bearer ${CRON}`) => fetch(`${BASE}/api/cron/notifications`, { method: "POST", headers: { authorization: auth, "x-klynge-now": String(now) } });
+  const noAuth = await cron(END + 2 * MIN, "Bearer wrong-secret-wrong-secret-wrong-secret-00");
+  check("J10: worker endpoint requires the server-only cron secret (401)", noAuth.status === 401, String(noAuth.status));
+  const early = await (await cron(END + 30 * 1000)).json();
+  check("J10: retry respects backoff (not due before 60 s)", early.delivered === 0, JSON.stringify(early));
+  const run1 = await (await cron(END + 2 * MIN)).json();
+  const run2 = await (await cron(END + 3 * MIN)).json();
+  check("J10: alert → worker → delivered after retry, exactly once", sentAfterConnect > sentBefore && run1.delivered === 1 && run2.delivered === 0 && (await deeMails()) === sentAfterConnect + 1, `${JSON.stringify(run1)} ${JSON.stringify(run2)} ${await deeStatus()}`);
+  const opsDenied = [await d.api("/api/admin/ops"), await d.api("/api/admin/ops", { headers: { "x-klynge-role": "admin", "x-klynge-admin": "1" } }), await d.api("/api/admin/ops/recover", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ role: "admin", tenantId: "x" }) })];
+  check("J12: non-operators cannot reach operator APIs, even with forged role headers/body (404)", opsDenied.every((r) => r.status === 404), opsDenied.map((r) => r.status).join(","));
+  const opsPage = await d.page.goto(`${BASE}/app/ops`);
+  check("J12: operator dashboard is not disclosed to regular users (404)", opsPage?.status() === 404, String(opsPage?.status()));
+  check("no browser console errors (pilot journeys, user)", d.errors.filter((e) => !/404/.test(e)).length === 0, d.errors.slice(0, 3).join(" | "));
+  await d.context.close();
+
+  const o = await workspace(END + 4 * MIN);
+  await signInGoogle(o, "ops@example.com");
+  await o.page.goto(`${BASE}/app/ops`);
+  const opsText = await o.page.locator("main").innerText();
+  const panels = await Promise.all(["ops-status", "ops-incidents", "ops-providers", "ops-sessions", "ops-delivery", "ops-ingestion", "ops-audit"].map((id) => o.page.getByTestId(id).count()));
+  check("J69: operator dashboard shows status, providers, sessions, delivery, ingestion, audit counts", panels.every((n) => n === 1) && (await o.page.getByTestId("ops-delivery").innerText()).match(/Delivered [1-9]/) !== null && /worker runs [1-9]/.test(await o.page.getByTestId("ops-delivery").innerText()), opsText.replace(/\s+/g, " ").slice(0, 400));
+  check("J69: operator view is aggregate-only (no user emails or ids)", !/(ada|bea|cy|dee)@example\.com/.test(opsText) && !/[0-9a-f]{8}-[0-9a-f]{4}-/.test(opsText));
+  const opsJson = await o.api("/api/admin/ops");
+  check("J69: ops API returns aggregates without PII, credentials or engine internals", opsJson.status === 200 && !/@example\.com|secret|apiKey|SERVICE_ROLE|minimumRewardRiskRatio|atrTolerance/i.test(JSON.stringify(opsJson.body)) && typeof opsJson.body.sessions.dataRecords === "number", String(opsJson.status));
+  const recover = await o.api("/api/admin/ops/recover", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+  check("J69: deterministic recovery available to operators (idempotent, audited)", recover.status === 200 && recover.body.quarantined === 0, JSON.stringify(recover.body));
+  for (const width of [1440, 390]) {
+    await o.page.setViewportSize({ width, height: 900 });
+    const overflow = await o.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    check(`no horizontal overflow /app/ops @${width}`, overflow <= 0, overflow > 0 ? `${overflow}px` : "");
+  }
+  check("no browser console errors (operator)", o.errors.length === 0, o.errors.slice(0, 3).join(" | "));
+  await o.context.close();
+
   // ── 11. Skewed chart set => BLOCKED (anonymous) ─────────────────────────────────────────────────────
   const s = await workspace(T);
   await s.upload("tsla-5m-bull", T);
@@ -386,7 +445,7 @@ try {
 
 // ── 14. Log hygiene: no image bytes, account text, auth tokens, emails or secrets ─────────────────────
 const png = readFileSync(img("broker-balance-tsla")).toString("base64");
-const leaks = ["iVBORw0KGgo", png.slice(200, 260), "4471-0098", "data:image/", "eyJ", "e2e-only-secret", "ada@example.com", "bea@example.com", "cy@example.com", "service_role"].filter((m) => logs.includes(m));
+const leaks = ["iVBORw0KGgo", png.slice(200, 260), "4471-0098", "data:image/", "eyJ", "e2e-only-secret", "ada@example.com", "bea@example.com", "cy@example.com", "dee@example.com", "ops@example.com", "e2e-cron-secret", "service_role"].filter((m) => logs.includes(m));
 check("server logs contain no image data or account text", leaks.length === 0, leaks.join(", "));
 rmSync(STATE_DIR, { recursive: true, force: true });
 

@@ -57,6 +57,14 @@ export class MemoryAccountStore implements AccountStore {
   allPendingTenants(): string[] {
     return [...new Set([...this.outbox.values()].filter((i) => i.status === "PENDING").map((i) => i.tenantId))];
   }
+  /** Infrastructure view (in-process notification worker only). */
+  allOutbox(): OutboxItem[] {
+    return [...this.outbox.values()];
+  }
+  /** Infrastructure view (operator monitoring: counts by action only). */
+  allAudit(): AuditEntry[] {
+    return [...this.audit.values()];
+  }
   async appendAudit(e: AuditEntry) {
     const key = this.k(e.tenantId, e.auditId);
     if (this.audit.has(key)) return false;

@@ -6,6 +6,8 @@ export interface VerifiedUser {
   id: string;
   email: string | null;
   method: AuthMethod | "unknown";
+  /** Supabase app_metadata.klynge_role (writable only with the service role, never by the user). */
+  appRole?: string | null;
 }
 
 export interface CookieOptions {

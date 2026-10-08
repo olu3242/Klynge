@@ -34,7 +34,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: Readonly<NotificationPreferences>
 export type DeliveryStatus = "PENDING" | "DELIVERED" | "FAILED" | "SUPPRESSED";
 
 export interface OutboxItem {
-  /** Idempotency key: hash(alertId|channel). */
+  /** Idempotency key: hash(tenantId|alertId|channel) — also the provider idempotency key, so it must be per tenant. */
   notificationId: string;
   tenantId: string;
   alertId: string;
@@ -61,7 +61,8 @@ export type AuditAction =
   | "notification.delivered"
   | "notification.failed"
   | "notification.suppressed"
-  | "data.connected";
+  | "data.connected"
+  | "ops.recovered";
 
 export interface AuditEntry {
   auditId: string;

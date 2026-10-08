@@ -25,4 +25,6 @@ export * from "./calendar/index.ts";
 export * from "./history/index.ts";
 export * from "./calibration/index.ts";
 export * from "./backtest/index.ts";
+export * from "./evaluation/index.ts";
 export * from "./user-policy/index.ts";
+export * from "./futures/index.ts";

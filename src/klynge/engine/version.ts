@@ -1,6 +1,6 @@
-export const KLYNGE_ENGINE_VERSION = "0.6.0";
+export const KLYNGE_ENGINE_VERSION = "0.7.0";
 
-export const KLYNGE_RULE_VERSION = "production-calibration-v1";
+export const KLYNGE_RULE_VERSION = "pilot-readiness-v1";
 
 /** Historical rule provenance. Never delete entries — recorded decisions reference them. */
 export const KLYNGE_RULE_HISTORY = Object.freeze([
@@ -29,6 +29,11 @@ export const KLYNGE_RULE_HISTORY = Object.freeze([
     engineVersion: "0.6.0",
     ruleVersion: "production-calibration-v1",
     summary: "Exchange calendars (NYSE/CME, DST, holidays, fail-closed coverage), market-closed handling, dataset manifests + SHA-256, report-only sensitivity calibration with human-approved policy proposals, event-driven hypothetical backtests, user risk policies (restrict-only).",
+  }),
+  Object.freeze({
+    engineVersion: "0.7.0",
+    ruleVersion: "pilot-readiness-v1",
+    summary: "CME futures front-contract selection + rollover (no NQ substitution), session-aligned bar aggregation (never filled), dataset versions + corporate-action flags, empirical decision analytics, sealed chronological holdout, cost sensitivity, out-of-sample reports (no performance or significance claims). Decision thresholds unchanged.",
   }),
 ] as const);
 

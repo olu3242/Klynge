@@ -18,6 +18,7 @@
 - `RoutedProvider`: per-symbol entitlements + equity pass-through; `FORBIDDEN_SUBSTITUTIONS` (SPX ↛ SPY/ES…, MNQ ↛ NQ/QQQ…).
 - **MNQ is not licensed by the Polygon adapter** → DATA mode BLOCKED (`ENTITLEMENT_MISSING`) until a CME futures adapter
   (e.g. CME Globex via a licensed vendor) is added. This is deliberate: no NQ/MNQ substitution.
+  _0.7.0: the CME futures adapter exists — see `pilot-readiness.md`._
 
 ## Exchange calendars (`src/klynge/calendar/`)
 - Explicit US DST rule (no host tz data). NYSE RTH 09:30–16:00 ET, 13:00 early closes, holiday table 2025–2027

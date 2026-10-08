@@ -62,10 +62,10 @@ describe("evaluateMarketTruth (end-to-end)", () => {
   it("carries provenance from the explicit clock", () => {
     const s = evaluateMarketTruth({ spx: up("SPX"), mnq: up("MNQ"), now });
     assert.deepEqual(s.provenance, { engineVersion: KLYNGE_ENGINE_VERSION, ruleVersion: KLYNGE_RULE_VERSION, evaluatedAt: now });
-    assert.equal(KLYNGE_ENGINE_VERSION, "0.6.0");
-    assert.equal(KLYNGE_RULE_VERSION, "production-calibration-v1");
+    assert.equal(KLYNGE_ENGINE_VERSION, "0.7.0");
+    assert.equal(KLYNGE_RULE_VERSION, "pilot-readiness-v1");
     // Historical provenance is preserved, never rewritten.
-    assert.deepEqual(KLYNGE_RULE_HISTORY.map((h) => h.ruleVersion), ["market-truth-v1", "setup-engine-v1", "mtf-options-v1", "visual-intake-v1", "auth-live-data-v1", "production-calibration-v1"]);
+    assert.deepEqual(KLYNGE_RULE_HISTORY.map((h) => h.ruleVersion), ["market-truth-v1", "setup-engine-v1", "mtf-options-v1", "visual-intake-v1", "auth-live-data-v1", "production-calibration-v1", "pilot-readiness-v1"]);
   });
 });
 
