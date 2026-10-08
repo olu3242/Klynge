@@ -141,6 +141,7 @@ function manifest() {
 
 const textOutputs = {
   [join(ROOT, "styles/tokens.css")]: T.tokensCss(tokens),
+  [join(ROOT, "apps/web/src/app/tokens.css")]: T.tokensCss(tokens),
   [join(PUB, "brand/asset-manifest.json")]: manifest(),
   ...Object.fromEntries(svgAssets.map(([p, svg]) => [join(PUB, p), svg])),
   ...Object.fromEntries(Object.entries(kitText).map(([k, v]) => [join(KIT, k), v])),

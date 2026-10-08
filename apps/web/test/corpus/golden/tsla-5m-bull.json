@@ -1,0 +1,19 @@
+{
+  "symbol": "TSLA",
+  "timeframe": "5m",
+  "lastPrice": 276.83,
+  "priceAxisRange": {
+    "min": 234.24,
+    "max": 278.59
+  },
+  "vwapVisible": true,
+  "priceVsVwap": "ABOVE",
+  "emaRelation": {
+    "label": "EMA 9",
+    "relation": "ABOVE"
+  },
+  "structure": "HH_HL",
+  "levels": null,
+  "volumeVisibility": "NONE",
+  "chartTime": null
+}

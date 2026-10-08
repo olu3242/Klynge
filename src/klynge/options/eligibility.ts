@@ -66,6 +66,7 @@ export function evaluateOptions(input: OptionsEvaluationInput): Readonly<Options
   if (setup.decision !== "CALL_SETUP" && setup.decision !== "PUT_SETUP") {
     return rejectAll(setup.decision === "WAIT" ? "WAIT" : "BLOCKED", ["NO_UNDERLYING_SETUP"], `No underlying CALL_SETUP or PUT_SETUP (underlying ${setup.decision})`);
   }
+  if (setup.evidenceMode !== "DATA") return rejectAll("BLOCKED", ["VISUAL_EVIDENCE"], "Options eligibility requires DATA evidence; visual observations cannot select contracts");
   const violations = validateDecisionState(setup);
   if (violations.length > 0) return rejectAll("BLOCKED", ["INVALID_UNDERLYING_DECISION"], `Underlying decision failed validation: ${violations[0]}`);
   if (chain.underlying !== setup.symbol) return rejectAll("BLOCKED", ["UNDERLYING_MISMATCH"], `Option chain is for ${chain.underlying}, not ${setup.symbol}`);

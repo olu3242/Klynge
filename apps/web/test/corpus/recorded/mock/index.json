@@ -1,0 +1,532 @@
+{
+  "4d1a35b0e0bf3e6c591d0aa8f4733f6e52d380d5b7a066808775848bdf51d939": {
+    "id": "tsla-5m-bull",
+    "raw": {
+      "symbol": {
+        "value": "TSLA",
+        "status": "OBSERVED",
+        "confidence": 0.97,
+        "evidence": "ticker in title"
+      },
+      "timeframe": {
+        "value": "5m",
+        "status": "OBSERVED",
+        "confidence": 0.95,
+        "evidence": "interval in title"
+      },
+      "lastPrice": {
+        "value": 276.83,
+        "status": "OBSERVED",
+        "confidence": 0.92,
+        "evidence": "highlighted price tag"
+      },
+      "priceAxisRange": {
+        "value": {
+          "min": 234.24,
+          "max": 278.59
+        },
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "right axis labels"
+      },
+      "vwapVisible": {
+        "value": true,
+        "status": "OBSERVED",
+        "confidence": 0.93,
+        "evidence": "line labelled VWAP"
+      },
+      "priceVsVwap": {
+        "value": "ABOVE",
+        "status": "OBSERVED",
+        "confidence": 0.88,
+        "evidence": "price relative to VWAP line"
+      },
+      "emaRelation": {
+        "value": {
+          "label": "EMA 9",
+          "relation": "ABOVE"
+        },
+        "status": "OBSERVED",
+        "confidence": 0.85,
+        "evidence": "line labelled EMA 9"
+      },
+      "structure": {
+        "value": "HH_HL",
+        "status": "OBSERVED",
+        "confidence": 0.84,
+        "evidence": "swing sequence"
+      },
+      "levels": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "volumeVisibility": {
+        "value": "NONE",
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "no volume pane"
+      },
+      "chartTime": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      }
+    }
+  },
+  "2d854487ebe66ce60e0e2ec35237a1faadd7603856b519824be4f81e47f0701d": {
+    "id": "spx-5m-bull",
+    "raw": {
+      "symbol": {
+        "value": "SPX",
+        "status": "OBSERVED",
+        "confidence": 0.97,
+        "evidence": "ticker in title"
+      },
+      "timeframe": {
+        "value": "5m",
+        "status": "OBSERVED",
+        "confidence": 0.95,
+        "evidence": "interval in title"
+      },
+      "lastPrice": {
+        "value": 5377.04,
+        "status": "OBSERVED",
+        "confidence": 0.92,
+        "evidence": "highlighted price tag"
+      },
+      "priceAxisRange": {
+        "value": {
+          "min": 5202.8,
+          "max": 5384.24
+        },
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "right axis labels"
+      },
+      "vwapVisible": {
+        "value": true,
+        "status": "OBSERVED",
+        "confidence": 0.93,
+        "evidence": "line labelled VWAP"
+      },
+      "priceVsVwap": {
+        "value": "ABOVE",
+        "status": "OBSERVED",
+        "confidence": 0.88,
+        "evidence": "price relative to VWAP line"
+      },
+      "emaRelation": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "structure": {
+        "value": "HH_HL",
+        "status": "OBSERVED",
+        "confidence": 0.84,
+        "evidence": "swing sequence"
+      },
+      "levels": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "volumeVisibility": {
+        "value": "NONE",
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "no volume pane"
+      },
+      "chartTime": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      }
+    }
+  },
+  "04803bca75f3473146513f668b9596224936c52bb89fd45f8368acc46d4d17c6": {
+    "id": "mnq-5m-bull",
+    "raw": {
+      "symbol": {
+        "value": "MNQ",
+        "status": "OBSERVED",
+        "confidence": 0.97,
+        "evidence": "ticker in title"
+      },
+      "timeframe": {
+        "value": "5m",
+        "status": "OBSERVED",
+        "confidence": 0.95,
+        "evidence": "interval in title"
+      },
+      "lastPrice": {
+        "value": 18610.36,
+        "status": "OBSERVED",
+        "confidence": 0.91,
+        "evidence": "price tag (misread)"
+      },
+      "priceAxisRange": {
+        "value": {
+          "min": 17985.2,
+          "max": 18610.16
+        },
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "right axis labels"
+      },
+      "vwapVisible": {
+        "value": true,
+        "status": "OBSERVED",
+        "confidence": 0.93,
+        "evidence": "line labelled VWAP"
+      },
+      "priceVsVwap": {
+        "value": "ABOVE",
+        "status": "OBSERVED",
+        "confidence": 0.88,
+        "evidence": "price relative to VWAP line"
+      },
+      "emaRelation": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "structure": {
+        "value": "HH_HL",
+        "status": "OBSERVED",
+        "confidence": 0.84,
+        "evidence": "swing sequence"
+      },
+      "levels": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "volumeVisibility": {
+        "value": "NONE",
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "no volume pane"
+      },
+      "chartTime": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      }
+    }
+  },
+  "b787dee8b912b0a33927fd377c5dd62575d81a99c85a1a0c170578ad6c72ca58": {
+    "id": "spx-5m-bear",
+    "raw": {
+      "symbol": {
+        "value": "SPX",
+        "status": "OBSERVED",
+        "confidence": 0.97,
+        "evidence": "ticker in title"
+      },
+      "timeframe": {
+        "value": "5m",
+        "status": "OBSERVED",
+        "confidence": 0.95,
+        "evidence": "interval in title"
+      },
+      "lastPrice": {
+        "value": 5068.64,
+        "status": "OBSERVED",
+        "confidence": 0.92,
+        "evidence": "highlighted price tag"
+      },
+      "priceAxisRange": {
+        "value": {
+          "min": 5061.44,
+          "max": 5247.92
+        },
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "right axis labels"
+      },
+      "vwapVisible": {
+        "value": true,
+        "status": "OBSERVED",
+        "confidence": 0.93,
+        "evidence": "line labelled VWAP"
+      },
+      "priceVsVwap": {
+        "value": "BELOW",
+        "status": "OBSERVED",
+        "confidence": 0.88,
+        "evidence": "price relative to VWAP line"
+      },
+      "emaRelation": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "structure": {
+        "value": "LH_LL",
+        "status": "OBSERVED",
+        "confidence": 0.84,
+        "evidence": "swing sequence"
+      },
+      "levels": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "volumeVisibility": {
+        "value": "NONE",
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "no volume pane"
+      },
+      "chartTime": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "atr14": {
+        "value": 4.2,
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "computed"
+      }
+    }
+  },
+  "58ddc45daf4cd7a7c7f77b17036496e84b1b9733eee8a17a219a401ba66c1706": {
+    "id": "tsla-5m-bear",
+    "raw": {
+      "symbol": {
+        "value": "TSLA",
+        "status": "OBSERVED",
+        "confidence": 0.97,
+        "evidence": "ticker in title"
+      },
+      "timeframe": {
+        "value": "5m",
+        "status": "OBSERVED",
+        "confidence": 0.95,
+        "evidence": "interval in title"
+      },
+      "lastPrice": {
+        "value": 398.4,
+        "status": "OBSERVED",
+        "confidence": 0.92,
+        "evidence": "highlighted price tag"
+      },
+      "priceAxisRange": {
+        "value": {
+          "min": 396.4,
+          "max": 448.2
+        },
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "right axis labels"
+      },
+      "vwapVisible": {
+        "value": true,
+        "status": "OBSERVED",
+        "confidence": 0.93,
+        "evidence": "line labelled VWAP"
+      },
+      "priceVsVwap": {
+        "value": "BELOW",
+        "status": "OBSERVED",
+        "confidence": 0.88,
+        "evidence": "price relative to VWAP line"
+      },
+      "emaRelation": {
+        "value": {
+          "label": "EMA 9",
+          "relation": "BELOW"
+        },
+        "status": "OBSERVED",
+        "confidence": 0.85,
+        "evidence": "line labelled EMA 9"
+      },
+      "structure": {
+        "value": "MIXED",
+        "status": "OBSERVED",
+        "confidence": 0.86,
+        "evidence": "swing sequence (misjudged)"
+      },
+      "levels": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "volumeVisibility": {
+        "value": "NONE",
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "no volume pane"
+      },
+      "chartTime": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      }
+    }
+  },
+  "c4afffd36a3cfa67c915d99772f4f8bb47982876aa9c07833401d8d06f922807": {
+    "id": "nvda-5m-ambiguous",
+    "raw": {
+      "symbol": {
+        "value": "NVDA",
+        "status": "OBSERVED",
+        "confidence": 0.97,
+        "evidence": "ticker in title"
+      },
+      "timeframe": {
+        "value": "5m",
+        "status": "OBSERVED",
+        "confidence": 0.95,
+        "evidence": "interval in title"
+      },
+      "lastPrice": {
+        "value": 130.88,
+        "status": "OBSERVED",
+        "confidence": 0.92,
+        "evidence": "highlighted price tag"
+      },
+      "priceAxisRange": {
+        "value": {
+          "min": 130.48,
+          "max": 131.82
+        },
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "right axis labels"
+      },
+      "vwapVisible": {
+        "value": true,
+        "status": "OBSERVED",
+        "confidence": 0.93,
+        "evidence": "line labelled VWAP"
+      },
+      "priceVsVwap": {
+        "value": "AT",
+        "status": "OBSERVED",
+        "confidence": 0.88,
+        "evidence": "price relative to VWAP line"
+      },
+      "emaRelation": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "structure": {
+        "value": "HH_HL",
+        "status": "OBSERVED",
+        "confidence": 0.5,
+        "evidence": "unclear swings"
+      },
+      "levels": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "volumeVisibility": {
+        "value": "NONE",
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "no volume pane"
+      },
+      "chartTime": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      }
+    }
+  },
+  "375eaaebea877ffe711614a4abc60048e25cf23c6072e45d0b219324c9dc52d4": {
+    "id": "broker-balance-tsla",
+    "raw": {
+      "symbol": {
+        "value": "TSLA",
+        "status": "OBSERVED",
+        "confidence": 0.97,
+        "evidence": "ticker in title"
+      },
+      "timeframe": {
+        "value": "5m",
+        "status": "OBSERVED",
+        "confidence": 0.95,
+        "evidence": "interval in title"
+      },
+      "lastPrice": {
+        "value": 276.83,
+        "status": "OBSERVED",
+        "confidence": 0.92,
+        "evidence": "highlighted price tag"
+      },
+      "priceAxisRange": {
+        "value": {
+          "min": 234.24,
+          "max": 278.59
+        },
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "right axis labels"
+      },
+      "vwapVisible": {
+        "value": true,
+        "status": "OBSERVED",
+        "confidence": 0.93,
+        "evidence": "line labelled VWAP"
+      },
+      "priceVsVwap": {
+        "value": "ABOVE",
+        "status": "OBSERVED",
+        "confidence": 0.88,
+        "evidence": "price relative to VWAP line"
+      },
+      "emaRelation": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "structure": {
+        "value": "HH_HL",
+        "status": "OBSERVED",
+        "confidence": 0.84,
+        "evidence": "swing sequence"
+      },
+      "levels": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      },
+      "volumeVisibility": {
+        "value": "NONE",
+        "status": "OBSERVED",
+        "confidence": 0.9,
+        "evidence": "no volume pane"
+      },
+      "chartTime": {
+        "value": null,
+        "status": "NOT_VISIBLE",
+        "confidence": 0.9,
+        "evidence": "not shown"
+      }
+    }
+  }
+}

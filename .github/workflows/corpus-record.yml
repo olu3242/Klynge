@@ -1,0 +1,57 @@
+# Manual LIVE re-record of the chart-extraction corpus (spends API credits). Never runs on push/PR.
+# Authenticates with Anthropic Workload Identity Federation — no long-lived API key in GitHub.
+name: corpus-record
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: corpus-record
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+
+      - name: Fetch GitHub OIDC token for Anthropic
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            const token = await core.getIDToken('https://api.anthropic.com');
+            const file = `${process.env.RUNNER_TEMP}/anthropic-oidc-token`;
+            fs.writeFileSync(file, token, { mode: 0o600 });
+            core.exportVariable('ANTHROPIC_IDENTITY_TOKEN_FILE', file);
+
+      - name: Record corpus (live)
+        env:
+          KLYNGE_EXTRACTOR: claude
+          ANTHROPIC_FEDERATION_RULE_ID: fdrl_01VawhzhD4SXmmQVo7hQ6MPW
+          ANTHROPIC_ORGANIZATION_ID: 805fc743-144a-4619-b314-87d61f239d2a
+          ANTHROPIC_SERVICE_ACCOUNT_ID: svac_01YBsxBLY7XKHz1FQh1tLe1E
+          ANTHROPIC_WORKSPACE_ID: wrkspc_01Drb1d2NTDQdAfcsvPrej8L
+        run: npm run corpus:record | tee corpus-report.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corpus-recorded-claude
+          path: |
+            apps/web/test/corpus/recorded/claude/
+            apps/web/corpus-report.txt
+          retention-days: 30

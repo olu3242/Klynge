@@ -1,0 +1,16 @@
+{
+  "symbol": "MNQ",
+  "timeframe": "5m",
+  "lastPrice": 18585.36,
+  "priceAxisRange": {
+    "min": 17985.2,
+    "max": 18610.16
+  },
+  "vwapVisible": true,
+  "priceVsVwap": "ABOVE",
+  "emaRelation": null,
+  "structure": "HH_HL",
+  "levels": null,
+  "volumeVisibility": "NONE",
+  "chartTime": null
+}

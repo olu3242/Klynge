@@ -1,4 +1,4 @@
-import type { Direction, MarketRegime, Timeframe } from "../domain/types.ts";
+import type { Direction, EvidenceMode, MarketRegime, Timeframe } from "../domain/types.ts";
 import type { HigherTimeframeBias } from "../timeframe/bias.ts";
 import type { ConfirmationQuality, ConfirmationState } from "../confirmation/confirmation.ts";
 import type { DecisionProvenance } from "../engine/version.ts";
@@ -69,6 +69,9 @@ export interface SetupExplanation {
 }
 
 export interface KlyngeDecisionState {
+  /** Engine decisions are always DATA. CALL_SETUP / PUT_SETUP are impossible in VISUAL mode. */
+  evidenceMode: EvidenceMode;
+
   symbol: string;
   timeframe: Timeframe;
   timestamp: number;

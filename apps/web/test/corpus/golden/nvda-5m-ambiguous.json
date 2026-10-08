@@ -1,0 +1,16 @@
+{
+  "symbol": "NVDA",
+  "timeframe": "5m",
+  "lastPrice": 130.88,
+  "priceAxisRange": {
+    "min": 130.48,
+    "max": 131.82
+  },
+  "vwapVisible": true,
+  "priceVsVwap": "AT",
+  "emaRelation": null,
+  "structure": "MIXED",
+  "levels": null,
+  "volumeVisibility": "NONE",
+  "chartTime": null
+}

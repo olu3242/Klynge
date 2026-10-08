@@ -16,7 +16,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint . && node scripts/checks/public-boundary.mjs && node scripts/brand/generate.mjs --check",
     "qa": "node scripts/build.mjs && node scripts/qa/landing-qa.mjs",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run qa"
+    "check": "npm run typecheck && npm run lint && npm test && npm run build && npm run qa",
+    "check:app": "npm --prefix apps/web run check"
   },
   "license": "UNLICENSED",
   "devDependencies": {

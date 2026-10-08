@@ -9,6 +9,7 @@ import type { OptionsDecision, OptionsDecisionState } from "../options/types.ts"
 import type { ReplayOutcome } from "../replay/types.ts";
 import type { HigherTimeframeBias } from "../timeframe/bias.ts";
 import type { MultiTimeframeState } from "../timeframe/multi-timeframe.ts";
+import type { VisualContextLabel, VisualContextState } from "../visual/visual-context.ts";
 import type { AgentId } from "./registry.ts";
 
 /** DETERMINISTIC ENGINE -> AGENT -> USER. Lower index = higher authority over market truth. */
@@ -143,5 +144,40 @@ export function checkAgentReplayClaim(outcome: ReplayOutcome, claim: AgentReplay
   if (claim.targetReached !== undefined && claim.targetReached !== outcome.targetReached) v.push("target claim contradicts replay");
   if (claim.invalidationReached !== undefined && claim.invalidationReached !== outcome.invalidationReached) v.push("invalidation claim contradicts replay");
   if (claim.realizedRewardRisk !== undefined && claim.realizedRewardRisk !== outcome.realizedRewardRisk) v.push("R claim contradicts replay");
+  return { ok: v.length === 0, violations: v };
+}
+
+/** Agents may explain VISUAL context; they may never upgrade it into a setup or claim data verification. */
+export interface AgentVisualClaim {
+  agentId: AgentId;
+  action: string;
+  label?: VisualContextLabel;
+  permission?: string;
+  decision?: KlyngeDecision;
+  claimsDataVerified?: boolean;
+}
+
+export function checkAgentVisualClaim(state: VisualContextState, claim: AgentVisualClaim): AuthorityCheck {
+  const v: string[] = [];
+  if (!(AGENT_ALLOWED_ACTIONS as readonly string[]).includes(claim.action)) v.push(`action "${claim.action}" is not permitted for agents`);
+  if (claim.label !== undefined && claim.label !== state.label) v.push(`label ${claim.label} contradicts engine ${state.label}`);
+  if (claim.permission !== undefined && claim.permission !== state.permission) v.push(`permission ${claim.permission} contradicts engine ${state.permission}`);
+  if (claim.decision === "CALL_SETUP" || claim.decision === "PUT_SETUP") v.push("VISUAL evidence can never produce CALL_SETUP / PUT_SETUP");
+  if (claim.claimsDataVerified) v.push("visual observations are never DATA_VERIFIED");
+  return { ok: v.length === 0, violations: v };
+}
+
+/** Journal: engine records are immutable; agents may only explain or summarize user annotations. */
+export interface AgentJournalAction {
+  agentId: AgentId;
+  action: string;
+  target: "ENGINE_RECORD" | "USER_NOTE";
+  mutates: boolean;
+}
+
+export function checkAgentJournalAction(a: AgentJournalAction): AuthorityCheck {
+  const v: string[] = [];
+  if (a.action !== "explain" && a.action !== "summarize") v.push(`journal action "${a.action}" is not permitted for agents (explain/summarize only)`);
+  if (a.mutates) v.push(`agents may not modify ${a.target === "ENGINE_RECORD" ? "engine records" : "user notes"}`);
   return { ok: v.length === 0, violations: v };
 }

@@ -1,0 +1,16 @@
+{
+  "symbol": "SPX",
+  "timeframe": "5m",
+  "lastPrice": 5377.04,
+  "priceAxisRange": {
+    "min": 5202.8,
+    "max": 5384.24
+  },
+  "vwapVisible": true,
+  "priceVsVwap": "ABOVE",
+  "emaRelation": null,
+  "structure": "HH_HL",
+  "levels": null,
+  "volumeVisibility": "NONE",
+  "chartTime": null
+}

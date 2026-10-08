@@ -1,6 +1,6 @@
-export const KLYNGE_ENGINE_VERSION = "0.3.0";
+export const KLYNGE_ENGINE_VERSION = "0.4.0";
 
-export const KLYNGE_RULE_VERSION = "mtf-options-v1";
+export const KLYNGE_RULE_VERSION = "visual-intake-v1";
 
 /** Historical rule provenance. Never delete entries — recorded decisions reference them. */
 export const KLYNGE_RULE_HISTORY = Object.freeze([
@@ -14,6 +14,11 @@ export const KLYNGE_RULE_HISTORY = Object.freeze([
     engineVersion: "0.3.0",
     ruleVersion: "mtf-options-v1",
     summary: "Multi-session warm-up, timeframe hierarchy, HTF bias gate, execution context, replay, calibration, options eligibility.",
+  }),
+  Object.freeze({
+    engineVersion: "0.4.0",
+    ruleVersion: "visual-intake-v1",
+    summary: "Evidence modes (VISUAL/DATA), field provenance, visual validation + context, chart sessions, confirmations, snapshots, alerts.",
   }),
 ] as const);
 

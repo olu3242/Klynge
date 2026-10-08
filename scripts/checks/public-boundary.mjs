@@ -3,9 +3,9 @@
  * Scans every public-facing source file for engine-IP leakage, banned marketing language,
  * and required risk disclosures. Fails the lint step on any violation.
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, extname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const PUBLIC_ROOTS = ["index.html", "styles", "js", "public"];
@@ -87,6 +87,24 @@ for (const f of files) {
   });
 }
 
+// PRODUCT app (apps/web): banned language in client-facing source, and — when built — engine/secret markers in
+// browser-delivered chunks (same guard as `npm run bundle:check` in apps/web).
+const APP_CLIENT_ROOTS = ["apps/web/src/app", "apps/web/src/components", "apps/web/src/lib"].filter((p) => existsSync(join(ROOT, p)));
+const appFiles = APP_CLIENT_ROOTS.flatMap((p) => walk(p)).filter((f) => /\.(tsx?|css)$/.test(f) && !f.includes("/api/"));
+for (const f of appFiles) {
+  readFileSync(join(ROOT, f), "utf8").split("\n").forEach((line, i) => {
+    for (const [re, label] of BANNED) if (re.test(line)) violations.push(`${f}:${i + 1}: ${label} — "${line.trim().slice(0, 120)}"`);
+  });
+}
+const appStatic = join(ROOT, "apps/web/.next/static");
+let bundleNote = "app bundle not built";
+if (existsSync(appStatic)) {
+  const { scan } = await import(pathToFileURL(join(ROOT, "apps/web/scripts/check-client-bundle.mjs")).href);
+  const hits = scan(appStatic);
+  for (const h of hits) violations.push(`apps/web/.next/static/${h}: engine internals or secret in client bundle`);
+  bundleNote = "app client bundle scanned";
+}
+
 const index = readFileSync(join(ROOT, "index.html"), "utf8").replace(/\s+/g, " ");
 for (const req of REQUIRED_IN_INDEX) if (!index.includes(req)) violations.push(`index.html: missing required disclosure "${req.slice(0, 60)}…"`);
 
@@ -94,4 +112,4 @@ if (violations.length) {
   console.error(`public-boundary FAILED (${violations.length}):\n  ` + violations.join("\n  "));
   process.exit(1);
 }
-console.log(`public-boundary OK (${files.length} public files scanned)`);
+console.log(`public-boundary OK (${files.length} public files, ${appFiles.length} app client sources scanned; ${bundleNote})`);

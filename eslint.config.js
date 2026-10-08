@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["node_modules/", "dist/", "build/", "public/"] },
+  { ignores: ["node_modules/", "dist/", "build/", "public/", "apps/"] },
   js.configs.recommended,
   {
     files: ["scripts/**/*.mjs", "eslint.config.js"],
@@ -12,7 +12,7 @@ export default tseslint.config(
   },
   {
     // Layering: core engine layers never depend on downstream consumers (options, replay, pipeline).
-    files: ["src/klynge/{domain,data-quality,indicators,structure,engine,regime,policies,levels,price-action,confirmation,risk,triggers,timeframe}/**/*.ts"],
+    files: ["src/klynge/{domain,data-quality,indicators,structure,engine,regime,policies,levels,price-action,confirmation,risk,triggers,timeframe,visual,alerts}/**/*.ts"],
     ignores: ["src/**/*.test.ts"],
     rules: {
       "no-restricted-imports": [

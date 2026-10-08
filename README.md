@@ -10,6 +10,9 @@ Risk-first market decision-support platform. This repository contains:
   - Multi-timeframe context: macro/structure bias gate and execution context, derived from one base feed.
   - Replay with no-lookahead guards, plus report-only calibration.
   - Options eligibility, strictly downstream of the underlying setup.
+  - Visual intake: chart observations with per-field provenance → visual context (WAIT/BLOCKED only); DATA mode required for setups.
+- **Product app** (`apps/web`, Next.js): upload charts, review what was observed / not verified / missing, confirm fields,
+  import OHLCV for full analysis, journal, history and in-app alerts. See `docs/architecture/visual-intake.md`.
 
 ## Commands
 ```bash
@@ -23,6 +26,7 @@ npm run qa         # Playwright landing QA (responsive, a11y, links, console)
 npm run brand      # regenerate brand assets from tokens
 npm run check      # everything
 ```
+App: `cd apps/web && npm install && cp .env.example .env.local && npm run dev` (http://localhost:3100); `npm run check:app` from the root runs every app gate.
 Requires Node ≥ 22.18. QA and brand rendering use a Chromium at `/opt/pw-browsers` (override with `CHROMIUM_PATH`).
 
 ## Deploy

@@ -12,6 +12,7 @@ export function validateDecisionState(s: KlyngeDecisionState, policy: SetupPolic
   const req = (ok: boolean, msg: string) => {
     if (!ok) v.push(msg);
   };
+  req(s.evidenceMode === "DATA", "directional decisions require DATA evidence (VISUAL can never produce a setup)");
   req(s.regime === (call ? "RISK_ON" : "RISK_OFF"), `regime must be ${call ? "RISK_ON" : "RISK_OFF"}`);
   req(s.marketAligned === true, "market must be aligned");
   req(s.targetDirection === (call ? "BULLISH" : "BEARISH"), `target must be ${call ? "BULLISH" : "BEARISH"}`);

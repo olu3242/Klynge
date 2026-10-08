@@ -2,3 +2,9 @@ node_modules/
 dist/
 build/
 .DS_Store
+.next/
+*.tsbuildinfo
+.env
+.env*.local
+test-results/
+apps/web/e2e-artifacts/

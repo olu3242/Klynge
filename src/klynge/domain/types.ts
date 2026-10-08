@@ -14,6 +14,9 @@ export type Timeframe = "1m" | "5m" | "15m" | "30m" | "1h" | "4h" | "1d";
 
 export type TradePermission = "ENABLED" | "BLOCKED";
 
+/** VISUAL = observed from chart images; DATA = OHLCV evaluated by the deterministic engine. Never interchangeable. */
+export type EvidenceMode = "VISUAL" | "DATA";
+
 export type VolumeClass = "STRONG" | "CONFIRMING" | "NORMAL" | "WEAK";
 
 /** One OHLCV bar. `timestamp` is the bar OPEN time in epoch milliseconds (UTC). */

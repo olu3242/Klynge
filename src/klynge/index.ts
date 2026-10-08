@@ -16,3 +16,6 @@ export * from "./triggers/index.ts";
 export * from "./pipeline/index.ts";
 export * from "./options/index.ts";
 export * from "./replay/index.ts";
+export * from "./visual/index.ts";
+export * from "./snapshot/index.ts";
+export * from "./alerts/index.ts";

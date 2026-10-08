@@ -120,6 +120,7 @@ export function evaluateSetup(input: SetupEvaluationInput): Readonly<KlyngeDecis
 
   const finish = (d: Draft): Readonly<KlyngeDecisionState> => {
     const state: KlyngeDecisionState = {
+      evidenceMode: "DATA",
       symbol: target.symbol,
       timeframe: target.timeframe,
       timestamp: d.timestamp,

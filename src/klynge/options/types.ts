@@ -65,6 +65,7 @@ export type OptionsDecision = "ELIGIBLE" | "WAIT" | "BLOCKED";
 
 export type OptionBlockerCode =
   | "NO_UNDERLYING_SETUP"
+  | "VISUAL_EVIDENCE"
   | "INVALID_UNDERLYING_DECISION"
   | "UNDERLYING_MISMATCH"
   | "WRONG_OPTION_DIRECTION"
