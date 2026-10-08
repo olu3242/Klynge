@@ -13,6 +13,8 @@ const CODE_TTL_S = 300;
 const outbox = new Map<string, string>();
 /** One-time artifacts already redeemed (codes / magic links cannot be replayed). */
 const redeemed = new Set<string>();
+/** Revoked session ids (sign-out). Test-mode gateway: in-process only; Supabase revokes server-side. */
+const revoked = new Set<string>();
 /** Latest magic link per email (exposed to e2e through a test-only route). */
 export const mockOutbox = { latest: (email: string) => outbox.get(email.toLowerCase()) ?? null, clear: () => outbox.clear() };
 
@@ -35,6 +37,8 @@ interface Claims {
   method: "google" | "email";
   purpose: "session" | "code" | "magiclink";
   exp: number;
+  /** Unique id (sessions are revocable; codes are single-use). */
+  jti?: string;
 }
 
 export class MockAuthGateway implements AuthGateway {
@@ -73,14 +77,15 @@ export class MockAuthGateway implements AuthGateway {
     return { sub: mockUserId(email), email: email.toLowerCase(), method, purpose, exp: Math.floor(this.clock() / 1000) + ttl };
   }
   private startSession(c: Claims): VerifiedUser {
-    const s = this.sign({ ...c, purpose: "session", exp: Math.floor(this.clock() / 1000) + SESSION_TTL_S });
+    const s = this.sign({ ...c, purpose: "session", exp: Math.floor(this.clock() / 1000) + SESSION_TTL_S, jti: randomBytes(12).toString("base64url") });
     this.jar.set(MOCK_SESSION_COOKIE, s, { httpOnly: true, sameSite: "lax", secure: this.secure, path: "/", maxAge: SESSION_TTL_S });
     return { id: c.sub, email: c.email, method: c.method };
   }
 
   async getUser(): Promise<VerifiedUser | null> {
     const c = this.verify(this.jar.get(MOCK_SESSION_COOKIE), "session");
-    return c ? { id: c.sub, email: c.email, method: c.method } : null;
+    if (!c || !c.jti || revoked.has(c.jti)) return null;
+    return { id: c.sub, email: c.email, method: c.method };
   }
   /** Redirects to the test-only consent screen, which issues a signed one-time code to /auth/callback. */
   async startOAuth(_provider: "google", redirectTo: string): Promise<{ url: string }> {
@@ -111,7 +116,10 @@ export class MockAuthGateway implements AuthGateway {
     redeemed.add(tokenHash);
     return this.startSession(c);
   }
+  /** Revokes the session id (a copied cookie stops working) and clears the cookie. */
   async signOut(): Promise<void> {
+    const c = this.verify(this.jar.get(MOCK_SESSION_COOKIE), "session");
+    if (c?.jti) revoked.add(c.jti);
     this.jar.delete(MOCK_SESSION_COOKIE);
   }
 }

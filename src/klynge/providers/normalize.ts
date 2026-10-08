@@ -58,6 +58,7 @@ export function normalizeFeed(input: FeedInput): Readonly<NormalizedFeed> {
     bars.push(...r.value);
   }
 
+  if (calendar.covers && (!calendar.covers(from) || !calendar.covers(now))) return fail(input, "SESSION_BOUNDARY", "requested window is outside the exchange calendar's verified coverage");
   const accepted: Candle[] = [];
   for (const [i, b] of bars.entries()) {
     if (b.symbol !== plan.providerSymbol) return fail(input, "INVALID_SYMBOL_MAPPING", `bar for ${String(b.symbol)} in the ${plan.providerSymbol} feed`);
@@ -69,7 +70,15 @@ export function normalizeFeed(input: FeedInput): Readonly<NormalizedFeed> {
     if (prev && b.timestamp < prev.timestamp) return fail(input, "OUT_OF_ORDER", `bar ${b.timestamp} after ${prev.timestamp}`);
     if (b.timestamp > now) return fail(input, "FUTURE_BAR", `bar opens after the evaluation clock (${b.timestamp})`);
     const w = calendar.sessionAt(b.timestamp);
-    if (!w || (b.timestamp - w.openTimestamp) % tf !== 0) return fail(input, "SESSION_BOUNDARY", `bar ${b.timestamp} is outside a regular session or off the ${timeframe} grid`);
+    if (!w) {
+      const reason = calendar.excluded?.(b.timestamp);
+      if (reason) {
+        warnings.push(`bars in an excluded session dropped (${reason})`);
+        continue;
+      }
+      return fail(input, "SESSION_BOUNDARY", `bar ${b.timestamp} is outside a regular session`);
+    }
+    if ((b.timestamp - w.openTimestamp) % tf !== 0) return fail(input, "SESSION_BOUNDARY", `bar ${b.timestamp} is off the ${timeframe} session grid`);
     if (b.timestamp < from) {
       warnings.push("bars before the requested window ignored");
       continue;
@@ -180,7 +189,7 @@ export function assembleFeeds(feeds: readonly NormalizedFeed[], policy: Normaliz
   });
 }
 
-/** Provider failures never produce a setup: rate limiting is transient (WAIT); everything else is BLOCKED. */
+/** Provider failures never produce a setup: rate limiting / a closed market are transient (WAIT); everything else is BLOCKED. */
 export function providerFailurePermission(failures: readonly ProviderFailure[]): "WAIT" | "BLOCKED" {
-  return failures.length > 0 && failures.every((f) => f.code === "RATE_LIMITED") ? "WAIT" : "BLOCKED";
+  return failures.length > 0 && failures.every((f) => f.code === "RATE_LIMITED" || f.code === "MARKET_CLOSED") ? "WAIT" : "BLOCKED";
 }

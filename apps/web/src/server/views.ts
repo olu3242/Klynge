@@ -2,6 +2,7 @@ import { OBSERVATION_FIELDS, REQUIRED_FIELDS } from "./engine-core.ts";
 import type { ChartEntry, ChartSession, CycleOutcome, KlyngeDecisionState, StateAlert, VisualContextState } from "./engine-core.ts";
 import type { ChartView, DataDecisionView, EvidenceView, FieldView, RuntimeView, VisualContextView } from "../lib/view-model.ts";
 import type { DecisionRecord } from "./store/types.ts";
+import type { PolicyVerdictRecord } from "./account/types.ts";
 import { missingContext } from "./engine-core.ts";
 
 const LABELS: Record<string, string> = {
@@ -84,7 +85,7 @@ const STAGE_LABELS: [keyof KlyngeDecisionState["progress"], string][] = [
 ];
 const n = (x: number | undefined) => (x === undefined ? null : x.toFixed(2));
 
-export function dataView(d: KlyngeDecisionState, record?: Pick<DecisionRecord, "marketData" | "options">): DataDecisionView {
+export function dataView(d: KlyngeDecisionState, record?: Pick<DecisionRecord, "marketData" | "options">, verdict: PolicyVerdictRecord | null = null): DataDecisionView {
   const r = d.risk;
   return {
     evidenceMode: "DATA",
@@ -115,6 +116,7 @@ export function dataView(d: KlyngeDecisionState, record?: Pick<DecisionRecord, "
     source: record?.marketData?.length ? "PROVIDER" : "IMPORT",
     provenance: (record?.marketData ?? []).map((p) => ({ role: p.role, provider: p.provider, providerSymbol: p.providerSymbol, canonicalSymbol: p.canonicalSymbol, fetchedAt: p.fetchedAt, latestMarketTimestamp: p.latestMarketTimestamp, warnings: p.warnings })),
     options: record?.options ? { decision: record.options.decision, reasons: record.options.reasons.slice(0, 3) } : null,
+    userPolicy: verdict ? { withinUserPolicy: verdict.withinUserPolicy, vetoes: verdict.vetoes.map((v) => ({ code: v.code, reason: v.reason, scope: v.scope })) } : null,
   };
 }
 
@@ -137,6 +139,8 @@ const FAILURE_TEXT: Record<string, string> = {
   INVALID_SYMBOL_MAPPING: "This symbol is not available from the market data provider",
   TIMESTAMP_DISAGREEMENT: "Target and broad-market data are not synchronized",
   PARTIAL_MARKET_CONTEXT: "Broad-market data is incomplete",
+  ENTITLEMENT_MISSING: "The market-data plan does not license a required instrument (no substitute is used)",
+  MARKET_CLOSED: "Market closed — waiting for the next session",
 };
 
 /** Plain-language runtime status (no provider normalization internals). */

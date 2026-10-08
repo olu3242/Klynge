@@ -20,7 +20,9 @@ export type ProviderFailureCode =
   | "SESSION_BOUNDARY"
   | "INVALID_SYMBOL_MAPPING"
   | "TIMESTAMP_DISAGREEMENT"
-  | "PARTIAL_MARKET_CONTEXT";
+  | "PARTIAL_MARKET_CONTEXT"
+  | "ENTITLEMENT_MISSING"
+  | "MARKET_CLOSED";
 
 export interface ProviderFailure {
   code: ProviderFailureCode;
@@ -31,7 +33,7 @@ export interface ProviderFailure {
 }
 
 export type ProviderResult<T> =
-  | { ok: true; value: T; providerSymbol: string; fetchedAt: number; warnings: string[] }
+  | { ok: true; value: T; providerSymbol: string; fetchedAt: number; warnings: string[]; /** Raw vendor payload(s) as received (historical ingestion keeps them separately). */ raw?: unknown[] }
   | { ok: false; failure: ProviderFailure };
 
 export interface HistoricalRequest {

@@ -534,6 +534,22 @@ function DataDecisionCard({ d }: { d: DataDecisionView }) {
           ))}
         </dl>
       )}
+      {d.userPolicy && (
+        <div className="mt-4 rounded-lg border border-k-border p-3 text-sm" data-testid="user-policy" data-within={String(d.userPolicy.withinUserPolicy)}>
+          <p className="font-semibold">
+            <span aria-hidden="true">{d.userPolicy.withinUserPolicy ? "✓ " : "■ "}</span>
+            Your risk preferences: {d.userPolicy.withinUserPolicy ? "within your limits" : directional ? "outside your limits" : "nothing to apply (no setup)"}
+          </p>
+          {d.userPolicy.vetoes.length > 0 && (
+            <ul className="mt-1 list-disc pl-5 text-k-secondary">
+              {d.userPolicy.vetoes.map((v) => (
+                <li key={v.code}>{v.reason}</li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-1 text-xs text-k-secondary">Preferences can only restrict. They never change the engine decision.</p>
+        </div>
+      )}
       {d.options && (
         <p className="mt-4 text-sm" data-testid="options-state">
           <span className="text-k-secondary">Options (downstream of the underlying decision):</span> {d.options.decision}

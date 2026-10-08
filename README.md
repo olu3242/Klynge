@@ -14,7 +14,8 @@ Risk-first market decision-support platform. This repository contains:
 - **Product app** (`apps/web`, Next.js): Supabase Auth (Google OAuth + email magic link) with an anonymous visual trial;
   upload charts, review what was observed / not verified / missing, confirm fields, connect verified market data
   (VISUAL → DATA handoff), import OHLCV, journal, history and in-app alerts, persisted under RLS.
-  See `docs/architecture/visual-intake.md` and `docs/architecture/auth-live-data.md`.
+  Settings (restrict-only risk preferences, email opt-in), operational status, audit log.
+  See `docs/architecture/visual-intake.md`, `auth-live-data.md` and `production-readiness.md`.
 
 ## Commands
 ```bash

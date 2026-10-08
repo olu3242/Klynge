@@ -65,8 +65,9 @@ export class SupabaseAuthGateway implements AuthGateway {
     if (error || !user) throw new AuthError("INVALID_LINK", "Sign-in link expired or invalid");
     return user;
   }
+  /** Global sign-out: Supabase revokes every refresh token for the user server-side. */
   async signOut() {
-    await this.client.auth.signOut();
+    await this.client.auth.signOut({ scope: "global" });
   }
 }
 

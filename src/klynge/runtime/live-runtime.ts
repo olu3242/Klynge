@@ -7,7 +7,7 @@ import type { OptionChainSnapshot, OptionsDecision, OptionsDecisionState } from 
 import { DEFAULT_MARKET_CONTEXT_POLICY } from "../policies/market-context-policy.ts";
 import type { MarketContextPolicy } from "../policies/market-context-policy.ts";
 import type { SessionCalendar } from "../providers/calendar.ts";
-import { assembleFeeds, normalizeFeed, providerFailurePermission } from "../providers/normalize.ts";
+import { assembleFeeds, DEFAULT_NORMALIZATION_POLICY, normalizeFeed, providerFailurePermission } from "../providers/normalize.ts";
 import type { NormalizationPolicy } from "../providers/normalize.ts";
 import { planFeeds } from "../providers/symbol-map.ts";
 import type { SymbolMap } from "../providers/symbol-map.ts";
@@ -29,7 +29,10 @@ export interface RuntimeConfig {
   timeframePolicy: TimeframePolicy;
   /** Prior sessions fetched for warm-up (current session is added). */
   historySessions: number;
+  /** Target calendar (also the default for every role). */
   calendar: SessionCalendar;
+  /** Per-role exchange calendars (e.g. MNQ on CME Globex while TARGET/SPX follow NYSE). */
+  calendars?: Partial<Record<FeedRole, SessionCalendar>>;
   symbolMap: SymbolMap;
   contextPolicy?: MarketContextPolicy;
   includeVolumeProxy?: boolean;
@@ -184,7 +187,17 @@ export async function runDataCycle(deps: RuntimeDeps, config: RuntimeConfig, now
     return failureAlert(required.map((u) => ({ code: "INVALID_SYMBOL_MAPPING" as const, message: `${u.canonicalSymbol} has no ${config.symbolMap.provider} symbol`, role: u.role, canonicalSymbol: u.canonicalSymbol })));
   }
 
-  // 3. Fetch + normalize (history sessions + current session).
+  // 3. Market status (exchange calendars): never evaluate inside an unmodelled or uncovered window.
+  const status = config.calendar.status?.(now);
+  if (status === "OUTSIDE_COVERAGE" || status === "EXCLUDED") {
+    return failureAlert([{ code: "SESSION_BOUNDARY", message: status === "EXCLUDED" ? `session not modelled: ${config.calendar.excluded?.(now) ?? "excluded"}` : "evaluation time is outside the exchange calendar's verified coverage" }]);
+  }
+  if (status === "CLOSED") {
+    const lastClose = config.calendar.recentSessions(now, 1)[0]?.closeTimestamp ?? Number.NEGATIVE_INFINITY;
+    const grace = (config.normalizationPolicy ?? DEFAULT_NORMALIZATION_POLICY).maxStalenessMs;
+    if (now - lastClose > grace) return failureAlert([{ code: "MARKET_CLOSED", message: "market closed — no new verified bars until the next session" }]);
+  }
+  // Fetch + normalize (history sessions + current session).
   const windows = config.calendar.recentSessions(now, config.historySessions + 1);
   const current = windows.at(-1);
   if (!current || windows.length < config.historySessions + 1) {
@@ -204,7 +217,8 @@ export async function runDataCycle(deps: RuntimeDeps, config: RuntimeConfig, now
       } catch {
         results = [{ ok: false as const, failure: { code: "PROVIDER_UNAVAILABLE" as const, message: "provider request failed" } }];
       }
-      return normalizeFeed({ provider: provider.id, plan, timeframe, results, calendar: config.calendar, from, now, fetchedAt: now, ...(config.normalizationPolicy ? { policy: config.normalizationPolicy } : {}) });
+      const calendar = config.calendars?.[plan.role] ?? config.calendar;
+      return normalizeFeed({ provider: provider.id, plan, timeframe, results, calendar, from, now, fetchedAt: now, ...(config.normalizationPolicy ? { policy: config.normalizationPolicy } : {}) });
     }),
   );
   const assembled = assembleFeeds(feeds, config.normalizationPolicy);

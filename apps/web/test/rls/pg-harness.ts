@@ -10,6 +10,7 @@ import path from "node:path";
 import pg from "pg";
 
 export const MIGRATION = path.resolve(import.meta.dirname, "../../supabase/migrations/0001_klynge_sessions.sql");
+export const MIGRATIONS_DIR = path.resolve(import.meta.dirname, "../../supabase/migrations");
 
 function pgBin(): string {
   if (process.env.PG_BIN) return process.env.PG_BIN;
@@ -29,7 +30,11 @@ create function auth.uid() returns uuid language sql stable as $$
   select nullif(coalesce(current_setting('request.jwt.claim.sub', true), (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')), '')::uuid
 $$;
 grant usage on schema auth, public to anon, authenticated, service_role;
+create function auth.jwt() returns jsonb language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb)
+$$;
 grant execute on function auth.uid() to anon, authenticated, service_role;
+grant execute on function auth.jwt() to anon, authenticated, service_role;
 -- Supabase grants table privileges to API roles by default; the migration must revoke what RLS cannot scope.
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 `;
@@ -39,7 +44,8 @@ export interface Harness {
   stop(): Promise<void>;
 }
 
-export async function startPostgres(): Promise<Harness> {
+/** Default: the original 0001 migration only (keeps the 0.5.0 certification unchanged). `all`: every migration in order. */
+export async function startPostgres(opts: { migrations?: "0001" | "all" } = {}): Promise<Harness> {
   const bin = pgBin();
   const dir = mkdtempSync(path.join(tmpdir(), "klynge-pg-"));
   const asRoot = process.getuid?.() === 0;
@@ -65,7 +71,10 @@ export async function startPostgres(): Promise<Harness> {
     }
   }
   await pool.query(SUPABASE_BOOTSTRAP);
-  await pool.query(readFileSync(MIGRATION, "utf8"));
+  if (opts.migrations === "all") {
+    // Every migration, in order (0001, 0002, ...), exactly as they would be applied to the hosted project.
+    for (const f of readdirSync(MIGRATIONS_DIR).filter((x) => x.endsWith(".sql")).sort()) await pool.query(readFileSync(path.join(MIGRATIONS_DIR, f), "utf8"));
+  } else await pool.query(readFileSync(MIGRATION, "utf8"));
   return {
     pool,
     async stop() {
@@ -81,12 +90,12 @@ export async function startPostgres(): Promise<Harness> {
 }
 
 /** Run `sql` as an API role with a JWT subject, inside a rolled-back transaction (like PostgREST). */
-export async function as<T = Record<string, unknown>>(pool: pg.Pool, role: "anon" | "authenticated" | "service_role", sub: string | null, sql: string, params: unknown[] = []): Promise<T[]> {
+export async function as<T = Record<string, unknown>>(pool: pg.Pool, role: "anon" | "authenticated" | "service_role", sub: string | null, sql: string, params: unknown[] = [], claims: Record<string, unknown> = {}): Promise<T[]> {
   const c = await pool.connect();
   try {
     await c.query("begin");
     await c.query(`set local role ${role}`);
-    await c.query("select set_config('request.jwt.claims', $1, true)", [sub ? JSON.stringify({ sub, role }) : ""]);
+    await c.query("select set_config('request.jwt.claims', $1, true)", [sub ? JSON.stringify({ sub, role, ...claims }) : ""]);
     const r = await c.query(sql, params);
     await c.query("commit");
     return r.rows as T[];

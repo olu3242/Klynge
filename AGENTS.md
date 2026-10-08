@@ -10,7 +10,7 @@ Klynge is NOT a brokerage, an investment adviser, a guaranteed signal service, o
 |---|---|---|
 | `index.html`, `styles/`, `js/`, `public/` | PUBLIC | Landing page + brand assets → `dist/` |
 | `src/brand/tokens.json` | source of truth | Design tokens → `npm run brand` regenerates `styles/tokens.css`, SVG/PNG assets, kit, zip, manifest |
-| `src/klynge/` | INTERNAL | Deterministic engine: market truth, setup, multi-timeframe, options, visual intake, providers + DATA runtime (`auth-live-data-v1`, 0.5.0) |
+| `src/klynge/` | INTERNAL | Deterministic engine: market truth, setup, MTF, options, visual intake, providers + DATA runtime, exchange calendars, datasets, calibration, backtests, user policies (`production-calibration-v1`, 0.6.0) |
 | `apps/web/` | PRODUCT | Next.js App Router workspace: Supabase Auth, anonymous trial, chart intake, confirmation, VISUAL→DATA handoff, persistence (RLS), journal, alerts |
 | `docs/architecture/`, `docs/policies/` | INTERNAL | Engine spec, public/product/internal boundary |
 | `scripts/` | tooling | build, serve, brand pipeline, boundary scan, QA |
@@ -77,6 +77,25 @@ OPTIONS NEVER CREATE A SETUP
   never reconstructed speculatively.
 - VISUAL → DATA handoff carries hints only (symbol, timeframe, intent). Visual values never seed deterministic inputs.
 - Alerts reflect engine/runtime state; they never create it. Spec: `docs/architecture/auth-live-data.md`.
+
+## Constitution amendment — production readiness (0.6.0)
+Non-negotiable (all earlier rules still apply):
+1. VISUAL never becomes DATA_VERIFIED through model observation or user confirmation.
+2. CALL_SETUP / PUT_SETUP require verified DATA-mode conditions. WAIT and BLOCKED are valid, desirable outcomes.
+3. Agents cannot override deterministic decisions. User risk policies can only RESTRICT (veto) — never create,
+   upgrade or override; vetoes are stored separately from immutable engine records.
+4. No verified user → no durable user-owned session. Service-role privileges never substitute for user authorization.
+5. No broker execution exists or may be added without a new constitution.
+6. No fabricated historical results, performance metrics or market data. Synthetic data is labelled
+   `SYNTHETIC_NOT_EMPIRICAL`; backtests never make performance claims (`performanceClaim: "NONE"`).
+7. Calibration is report-only. Production thresholds change only through `proposePolicyChange` (empirical evidence) →
+   `approvePolicyChange` (named human) → a code release with a new `KLYNGE_RULE_VERSION`.
+8. Market data: no silent substitution (SPY ≠ SPX, NQ ≠ MNQ); missing entitlements fail closed (ENTITLEMENT_MISSING).
+   Exchange calendars fail closed outside verified coverage and on unmodelled holiday schedules.
+9. Notifications describe existing decisions with fixed templates (no thresholds, prices, reasons, screenshot text);
+   they never create signals and only go to the user's verified address.
+10. No secrets, thresholds or prompts in browser bundles. No hosted migration, push or deployment without explicit approval.
+Spec: `docs/architecture/production-readiness.md`.
 
 ## Canonical agents
 | Name | Identifier |

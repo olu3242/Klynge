@@ -9,7 +9,9 @@ import path from "node:path";
 const dir = path.resolve(process.argv[2] ?? ".next/static");
 export const MARKERS = [
   // engine identity / rule versions
-  /auth-live-data-v1|visual-intake-v1|mtf-options-v1|setup-engine-v1|market-truth-v1/,
+  /production-calibration-v1|auth-live-data-v1|visual-intake-v1|mtf-options-v1|setup-engine-v1|market-truth-v1/,
+  // calibration, backtest, user-policy, calendar, notification internals
+  /sensitivitySweep|runBacktest|simulateTrades|CONSERVATIVE_EXECUTION|applyUserPolicy|proposePolicyChange|NYSE_HOLIDAYS|cmeEquityIndexCalendar|composeNotification|DEDUPE_WINDOW_MS/,
   // provider normalization + runtime internals
   /normalizeFeed|assembleFeeds|providerFailurePermission|maxFeedSkewMs|maxStalenessMs|runDataCycle|marketStateKey|LiveDataRuntime|RUNTIME_STATE_UNAVAILABLE/,
   // engine internals (policy names, blocker codes, functions)
@@ -19,7 +21,7 @@ export const MARKERS = [
   // extraction prompt + secrets
   /You read trading chart screenshots|ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY|sk-ant-[A-Za-z0-9]/,
   // auth + service role + test-only machinery
-  /service_role|serviceRoleClient|SERVICE_ROLE_OPERATIONS|KLYNGE_TEST_AUTH_SECRET|klynge_mock_session|x-klynge-provider-scenario|KLYNGE_PROVIDER_API_KEY/,
+  /service_role|serviceRoleClient|SERVICE_ROLE_OPERATIONS|KLYNGE_TEST_AUTH_SECRET|klynge_mock_session|x-klynge-provider-scenario|KLYNGE_PROVIDER_API_KEY|POLYGON_API_KEY|RESEND_API_KEY|KLYNGE_CRON_SECRET|api\.polygon\.io|api\.resend\.com/,
   // raw JWTs (no token may be compiled into a browser chunk)
   /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}/,
 ];

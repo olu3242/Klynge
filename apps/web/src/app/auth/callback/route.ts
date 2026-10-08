@@ -4,6 +4,7 @@ import { gatewayFor } from "@/server/auth/select";
 import { safeNext, siteOrigin } from "@/server/auth/redirect";
 import { processDeps } from "@/server/runtime";
 import { track } from "@/server/telemetry";
+import { auditAuth } from "@/server/auth/audit-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +17,9 @@ export async function GET(req: Request) {
   const code = url.searchParams.get("code");
   try {
     if (!code) throw new Error("missing code");
-    const user = await gatewayFor(await nextCookieJar()).exchangeCode(code);
+    const gateway = gatewayFor(await nextCookieJar());
+    const user = await gateway.exchangeCode(code);
+    await auditAuth(gateway, user, "auth.sign_in", "Google");
     track(processDeps().telemetry, "auth.sign_in", user.id, Date.now(), { method: "google", outcome: "ok" });
     return NextResponse.redirect(new URL(next, origin), 303);
   } catch {

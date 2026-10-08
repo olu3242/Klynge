@@ -26,7 +26,7 @@ const check = (name: string, ok: boolean, detail?: string) => {
   results.push({ name, ok, ...(detail ? { detail } : {}) });
   console.log(`${ok ? "✓" : "✗"} ${name}${detail && !ok ? ` — ${detail}` : ""}`);
 };
-const TABLES = ["klynge_sessions", "klynge_decisions", "klynge_alerts", "klynge_journal", "klynge_runtime_state"];
+const TABLES = ["klynge_sessions", "klynge_decisions", "klynge_alerts", "klynge_journal", "klynge_runtime_state", "klynge_user_policies", "klynge_policy_verdicts", "klynge_notification_prefs", "klynge_notification_outbox", "klynge_audit_log"];
 
 const verify = serviceRoleClient("schema.verify");
 for (const t of TABLES) {
@@ -78,6 +78,11 @@ try {
   check("alert own insert", !(await a.client.from("klynge_alerts").insert({ tenant_id: a.id, alert_id: "al1", at: 1, payload: { alertId: "al1" } })).error);
   check("alert cross-user read denied", ((await b.client.from("klynge_alerts").select("*")).data ?? []).length === 0);
   check("alert update denied", Boolean((await a.client.from("klynge_alerts").update({ at: 2 }).eq("alert_id", "al1")).error));
+  const prefs = (address: string | null) => ({ version: 1, email: { enabled: Boolean(address), address, events: "ALL", minSeverity: "ATTENTION" }, maxPerHour: 6 });
+  check("notification prefs: own verified email allowed", !(await a.client.from("klynge_notification_prefs").insert({ tenant_id: a.id, payload: prefs(`klynge-rls-a-${tag}@example.com`) })).error);
+  check("notification prefs: arbitrary address denied", Boolean((await b.client.from("klynge_notification_prefs").insert({ tenant_id: b.id, payload: prefs("victim@example.com") })).error));
+  check("audit log: forged entry for another user denied", Boolean((await b.client.from("klynge_audit_log").insert({ tenant_id: a.id, audit_id: "x", at: 1, action: "auth.sign_in", detail: "forged" })).error));
+  check("policy verdict cannot reference another user's decision", Boolean((await b.client.from("klynge_policy_verdicts").insert({ tenant_id: b.id, record_id: "r1", at: 1, payload: { recordId: "r1", tenantId: b.id } })).error));
 } catch (e) {
   check("certification setup", false, (e as Error).message);
 } finally {

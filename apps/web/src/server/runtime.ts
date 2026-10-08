@@ -14,6 +14,11 @@ import { SupabaseSessionStore } from "./store/supabase-store.ts";
 import { TrialSessionStore } from "./store/trial-store.ts";
 import type { ImageRetention, SessionStore } from "./store/types.ts";
 import { consoleTelemetrySink } from "./telemetry.ts";
+import { FileAccountStore, MemoryAccountStore } from "./account/memory-account-store.ts";
+import { SupabaseAccountStore } from "./account/supabase-account-store.ts";
+import type { AccountStore } from "./account/types.ts";
+import { MockEmailProvider, ResendEmailProvider } from "./notifications/email.ts";
+import type { EmailProvider } from "./notifications/email.ts";
 import type { TelemetrySink } from "./telemetry.ts";
 import { isTestMode } from "./test-mode.ts";
 import type { WorkspaceDeps } from "./workspace.ts";
@@ -30,6 +35,9 @@ interface ProcessDeps {
   durable: SessionStore | null;
   market: MarketDataSetup | null;
   storeMode: StoreMode;
+  /** Shared account store for memory/file modes (null for supabase: per-request user-bound store). */
+  account: MemoryAccountStore | null;
+  email: EmailProvider | null;
 }
 
 let proc: ProcessDeps | undefined;
@@ -53,8 +61,20 @@ export function processDeps(): ProcessDeps {
     durable: mode === "memory" ? new MemorySessionStore() : mode === "file" ? new FileSessionStore(path.resolve(env.KLYNGE_STORE_FILE ?? ".klynge/store.json")) : null,
     market: marketDataFromEnv(env),
     storeMode: mode,
+    account: mode === "memory" ? new MemoryAccountStore() : mode === "file" ? new FileAccountStore(path.resolve(env.KLYNGE_ACCOUNT_STORE_FILE ?? ".klynge/account.json")) : null,
+    email: emailFromEnv(env),
   };
   return proc;
+}
+
+/** KLYNGE_EMAIL=resend (RESEND_API_KEY + KLYNGE_EMAIL_FROM, server-only) | mock (test mode) | none (default). */
+export function emailFromEnv(env: Readonly<Record<string, string | undefined>> = process.env): EmailProvider | null {
+  if (env.KLYNGE_EMAIL === "resend") return new ResendEmailProvider({ apiKey: env.RESEND_API_KEY ?? "", from: env.KLYNGE_EMAIL_FROM ?? "" });
+  if (env.KLYNGE_EMAIL === "mock") {
+    if (!isTestMode(env)) throw new Error("KLYNGE_EMAIL=mock requires test mode");
+    return new MockEmailProvider();
+  }
+  return null;
 }
 
 /**
@@ -72,7 +92,9 @@ export function depsFor(identity: Identity, gateway: AuthGateway, headers?: Head
   } else store = p.durable as SessionStore;
   const scenario = headers ? scenarioFrom(headers) : null;
   const market = p.market && scenario ? withScenario(p.market, scenario) : p.market;
-  return { store, images: p.images, extractor: p.extractor, limiter: p.limiter, telemetry: p.telemetry, market };
+  let account: AccountStore | null = null;
+  if (identity.kind === "USER") account = p.storeMode === "supabase" ? new SupabaseAccountStore((gateway as SupabaseAuthGateway).client, identity.user.id) : p.account;
+  return { store, images: p.images, extractor: p.extractor, limiter: p.limiter, telemetry: p.telemetry, market, account, email: identity.kind === "USER" ? p.email : null };
 }
 
 /** Evaluation clock. A header override exists ONLY in test mode (e2e); production always uses wall time. */

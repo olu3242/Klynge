@@ -15,6 +15,10 @@ import {
 } from "./engine-core.ts";
 import type { ChartObservation, ChartSession, ConfirmationEdit, CycleOutcome, KlyngeDecisionState, RuntimeStore, StateAlert, VisualContextState, VisualPolicy } from "./engine-core.ts";
 import type { MarketDataSetup } from "./market-data.ts";
+import { applyUserPolicy, DEFAULT_USER_RISK_POLICY } from "./engine-core.ts";
+import type { AccountStore, PolicyVerdictRecord } from "./account/types.ts";
+import { audit, deliverPending, queueAlertNotification } from "./notifications/dispatcher.ts";
+import type { EmailProvider } from "./notifications/email.ts";
 import type { ExtractionHints, ChartExtractor } from "./extraction/types.ts";
 import { processUpload } from "./intake.ts";
 import { parseOhlcv } from "./ohlcv.ts";
@@ -34,6 +38,30 @@ export interface WorkspaceDeps {
   visualPolicy?: VisualPolicy;
   /** Verified market-data provider (DATA mode). Absent => connecting data is unavailable. */
   market?: MarketDataSetup | null;
+  /** Verified users only: preferences, policy verdicts, notification outbox, audit log. */
+  account?: AccountStore | null;
+  email?: EmailProvider | null;
+}
+
+/** Alerts describe state changes; notifications describe alerts. Delivery is best-effort and never blocks a decision. */
+async function onAlertCreated(deps: WorkspaceDeps, tenantId: string, alert: StateAlert, now: number): Promise<void> {
+  if (!deps.account) return;
+  try {
+    await queueAlertNotification(deps.account, tenantId, alert, now);
+    if (deps.email) await deliverPending(deps.account, deps.email, tenantId, now);
+  } catch {
+    // Delivery failures are retried by the dispatcher; they never affect engine state.
+  }
+}
+
+/** User risk policy verdict for a persisted DATA decision — stored SEPARATELY from the immutable engine record. */
+async function recordVerdict(deps: WorkspaceDeps, tenantId: string, record: DecisionRecord): Promise<void> {
+  if (!deps.account || !record.data) return;
+  const policy = (await deps.account.getPolicy(tenantId)) ?? DEFAULT_USER_RISK_POLICY;
+  const cal = deps.market?.calendar;
+  const regularSession = cal ? (cal.status ? cal.status(record.marketTimestamp ?? record.at) === "OPEN" : cal.sessionAt(record.marketTimestamp ?? record.at) !== null) : true;
+  const v = applyUserPolicy({ decision: record.data, options: record.options ?? null, policy, regularSession });
+  await deps.account.putVerdict({ recordId: record.recordId, tenantId, at: record.at, engineDecision: v.engineDecision, withinUserPolicy: v.withinUserPolicy, vetoes: [...v.vetoes], policyVersion: policy.version });
 }
 
 export class WorkspaceError extends Error {
@@ -95,7 +123,7 @@ async function evaluateVisual(deps: WorkspaceDeps, session: ChartSession, now: n
   await deps.store.putRecord(record);
   const alert = detectVisualChange(prior?.visual, context);
   // Trial sessions never persist alerts.
-  if (alert && deps.store.durability === "DURABLE") await deps.store.addAlert(session.tenantId, alert);
+  if (alert && deps.store.durability === "DURABLE" && (await deps.store.addAlert(session.tenantId, alert))) await onAlertCreated(deps, session.tenantId, alert, now);
   track(deps.telemetry, "decision.evaluated", session.tenantId, now, { evidenceMode: "VISUAL", label: context.label, permission: context.permission, blockers: context.blockers });
   return { context, recordId: record.recordId };
 }
@@ -187,9 +215,11 @@ export async function importOhlcv(deps: WorkspaceDeps, input: { tenantId: string
   if (evaluation.evidenceMode !== "DATA") throw new Error("unreachable");
   const decision = evaluation.result.setup;
   const marketTimestamp = data.target.at(-1)?.candles.at(-1)?.timestamp ?? asOf;
-  await deps.store.putRecord({ recordId: snapshot.snapshotId, tenantId: input.tenantId, sessionId: input.sessionId, symbol, timeframe: decision.timeframe, evidenceMode: "DATA", at: asOf, data: decision, marketTimestamp });
+  const record: DecisionRecord = { recordId: snapshot.snapshotId, tenantId: input.tenantId, sessionId: input.sessionId, symbol, timeframe: decision.timeframe, evidenceMode: "DATA", at: asOf, data: decision, marketTimestamp };
+  await deps.store.putRecord(record);
+  await recordVerdict(deps, input.tenantId, record);
   const alert: StateAlert | null = detectDecisionChange(previous, decision);
-  if (alert) await deps.store.addAlert(input.tenantId, alert);
+  if (alert && (await deps.store.addAlert(input.tenantId, alert))) await onAlertCreated(deps, input.tenantId, alert, input.now);
   track(deps.telemetry, "decision.evaluated", input.tenantId, input.now, { evidenceMode: "DATA", decision: decision.decision, blockers: decision.blockers });
   return getWorkspace(deps, input.tenantId, input.sessionId);
 }
@@ -218,6 +248,7 @@ export async function getWorkspace(
   const records = await deps.store.listRecords(tenantId, { sessionId });
   const lastVisual = records.filter((r) => r.evidenceMode === "VISUAL").at(-1);
   const lastData = records.filter((r) => r.evidenceMode === "DATA").at(-1);
+  const verdict: PolicyVerdictRecord | undefined = lastData && deps.account ? (await deps.account.listVerdicts(tenantId)).find((v) => v.recordId === lastData.recordId) : undefined;
   const latest = records.at(-1);
   return {
     sessionId,
@@ -228,7 +259,7 @@ export async function getWorkspace(
       { role: "MNQ", present: false, symbol: null },
     ],
     visual: lastVisual?.visual ? visualView(lastVisual.visual) : null,
-    data: lastData?.data ? dataView(lastData.data, lastData) : null,
+    data: lastData?.data ? dataView(lastData.data, lastData, verdict ?? null) : null,
     evidence: evidenceView(Boolean(lastVisual?.visual), Boolean(lastData?.data)),
     account: {
       kind: deps.store.durability === "DURABLE" ? "USER" : "TRIAL",
@@ -283,11 +314,12 @@ export async function promoteTrial(
   await userDeps.store.putSession(copy);
   await evaluateVisual(userDeps, copy, input.now);
   track(userDeps.telemetry, "session.promoted", input.userId, input.now, { charts: copy.charts.length });
+  if (userDeps.account) await audit(userDeps.account, input.userId, input.now, "session.promoted", `${copy.charts.length} chart(s) copied from a trial`);
   return getWorkspace(userDeps, input.userId, input.newSessionId);
 }
 
 /** Tenant-scoped RuntimeStore over the durable SessionStore (ownership fixed to the verified user). */
-export function runtimeStoreFor(store: SessionStore, tenantId: string): RuntimeStore {
+export function runtimeStoreFor(store: SessionStore, tenantId: string, onAlert?: (a: StateAlert) => Promise<void>): RuntimeStore {
   const dataRecords = async (symbol?: string) => (await store.listRecords(tenantId, symbol ? { symbol } : {})).filter((r) => r.evidenceMode === "DATA" && r.data);
   const toPrev = (r: DecisionRecord) => ({ recordId: r.recordId, marketTimestamp: r.marketTimestamp ?? r.at, decision: r.data as KlyngeDecisionState });
   return {
@@ -317,7 +349,11 @@ export function runtimeStoreFor(store: SessionStore, tenantId: string): RuntimeS
         marketData: rec.marketData,
         ...(rec.handoff ? { handoff: rec.handoff } : {}),
       }),
-    putAlert: (a) => store.addAlert(tenantId, a),
+    putAlert: async (a) => {
+      const created = await store.addAlert(tenantId, a);
+      if (created && onAlert) await onAlert(a);
+      return created;
+    },
   };
 }
 
@@ -342,11 +378,25 @@ export async function connectData(
   const target = requested || handoff?.symbolHint;
   if (!target) throw new WorkspaceError("INVALID", "Add a target chart or enter a symbol to connect data");
   const outcome: Readonly<CycleOutcome> = await runDataCycle(
-    { provider: market.provider, store: runtimeStoreFor(deps.store, input.tenantId) },
-    { runtimeId: `${input.sessionId}:${target}`, sessionId: input.sessionId, targetSymbol: target, timeframePolicy: market.timeframePolicy, historySessions: market.historySessions, calendar: market.calendar, symbolMap: market.symbolMap },
+    { provider: market.provider, store: runtimeStoreFor(deps.store, input.tenantId, (a) => onAlertCreated(deps, input.tenantId, a, input.now)) },
+    {
+      runtimeId: `${input.sessionId}:${target}`,
+      sessionId: input.sessionId,
+      targetSymbol: target,
+      timeframePolicy: market.timeframePolicy,
+      historySessions: market.historySessions,
+      calendar: market.calendar,
+      ...(market.calendars ? { calendars: market.calendars } : {}),
+      symbolMap: market.symbolMap,
+    },
     input.now,
     handoff ? { handoff } : {},
   );
+  if (outcome.kind === "EVALUATED" && outcome.created) {
+    const rec = (await deps.store.listRecords(input.tenantId)).find((r) => r.recordId === outcome.recordId);
+    if (rec) await recordVerdict(deps, input.tenantId, rec);
+  }
+  if (deps.account) await audit(deps.account, input.tenantId, input.now, "data.connected", `${target} ${outcome.kind}`);
   track(deps.telemetry, "data.cycle", input.tenantId, input.now, {
     kind: outcome.kind,
     provider: market.provider.id,

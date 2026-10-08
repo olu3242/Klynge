@@ -4,6 +4,7 @@ import { gatewayFor } from "@/server/auth/select";
 import { safeNext, siteOrigin } from "@/server/auth/redirect";
 import { processDeps } from "@/server/runtime";
 import { track } from "@/server/telemetry";
+import { auditAuth } from "@/server/auth/audit-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +15,9 @@ export async function GET(req: Request) {
   const next = safeNext(url.searchParams.get("next"));
   const origin = siteOrigin(req);
   try {
-    const user = await gatewayFor(await nextCookieJar()).verifyMagicLink(url.searchParams.get("token_hash") ?? "", url.searchParams.get("type") ?? "");
+    const gateway = gatewayFor(await nextCookieJar());
+    const user = await gateway.verifyMagicLink(url.searchParams.get("token_hash") ?? "", url.searchParams.get("type") ?? "");
+    await auditAuth(gateway, user, "auth.sign_in", "email link");
     track(processDeps().telemetry, "auth.sign_in", user.id, Date.now(), { method: "email", outcome: "ok" });
     return NextResponse.redirect(new URL(next, origin), 303);
   } catch {

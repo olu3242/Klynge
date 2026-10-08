@@ -6,7 +6,7 @@ export interface ShellAccount {
   authEnabled: boolean;
 }
 
-export function AppShell({ children, active, account }: { children: ReactNode; active: "workspace" | "history" | "sign-in"; account?: ShellAccount }) {
+export function AppShell({ children, active, account }: { children: ReactNode; active: "workspace" | "history" | "sign-in" | "settings" | "status"; account?: ShellAccount }) {
   const link = (href: string, label: string, key: string) => (
     <a href={href} aria-current={active === key ? "page" : undefined} className={active === key ? "text-k-text" : "text-k-secondary hover:text-k-text"}>
       {label}
@@ -23,6 +23,8 @@ export function AppShell({ children, active, account }: { children: ReactNode; a
           <div className="ml-auto flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
             {link("/app", "Workspace", "workspace")}
             {link("/app/history", "History", "history")}
+            {account?.email && link("/app/settings", "Settings", "settings")}
+            {account?.email && link("/app/status", "Status", "status")}
             {account?.email ? (
               <form method="post" action="/auth/sign-out" className="flex items-center gap-3">
                 <span className="max-w-[12rem] truncate text-k-secondary" data-testid="account-email">

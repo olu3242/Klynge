@@ -11,6 +11,8 @@ Read `AGENTS.md` first; it applies in full.
   CALL_SETUP/PUT_SETUP and options require DATA mode. See the constitution amendments in `AGENTS.md`.
 - NO VERIFIED USER → NO DURABLE USER-OWNED MARKET SESSION. SERVICE ROLE ≠ USER AUTHORIZATION. VISUAL ≠ DATA.
   OPTIONS NEVER CREATE A SETUP. Tenant = auth user id, derived server-side only; anonymous use is a non-persistent trial.
+- 0.6.0: user policies only restrict; calibration is report-only (human-approved, versioned changes); no fabricated
+  performance; no instrument substitution; calendars and providers fail closed. See `AGENTS.md`.
 
 ## Working style
 - Make surgical edits. Brand assets are generated, so edit `src/brand/tokens.json` or `scripts/brand/*` and run `npm run brand`. Never hand-edit generated SVG/CSS.

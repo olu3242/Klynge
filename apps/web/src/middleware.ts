@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { csrfVerdict } from "./server/csrf.ts";
 
 const TRIAL_COOKIE = "klynge_trial";
 const SESSION_COOKIE = "klynge_session";
@@ -12,6 +13,9 @@ const LEGACY_TENANT_COOKIE = "klynge_tenant";
  * 2. Supabase session refresh (rotates the auth cookies). Identity is verified again on the server per request.
  */
 export async function middleware(req: NextRequest) {
+  // 0. CSRF: state-changing requests must originate from this site.
+  const csrf = csrfVerdict(req.method, req.nextUrl, req.headers, process.env.KLYNGE_SITE_URL);
+  if (!csrf.ok) return NextResponse.json({ error: "Request blocked" }, { status: 403 });
   const opts = { httpOnly: true, sameSite: "lax" as const, secure: req.nextUrl.protocol === "https:", path: "/" };
   const issued: [string, string, number][] = [];
   if (!req.cookies.get(TRIAL_COOKIE)) issued.push([TRIAL_COOKIE, crypto.randomUUID(), 60 * 60 * 24 * 30]);

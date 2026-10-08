@@ -12,6 +12,12 @@ export interface SessionCalendar {
   sessionsBetween(from: number, to: number): SessionWindow[];
   /** The last `count` sessions that have opened at or before `now`, ascending (current session last). */
   recentSessions(now: number, count: number): SessionWindow[];
+  /** Exchange calendars: false outside the encoded holiday coverage (callers fail closed). */
+  covers?(ts: number): boolean;
+  /** Exchange calendars: reason when `ts` falls in a deliberately unmodelled window (e.g. CME holiday schedule). */
+  excluded?(ts: number): string | null;
+  /** Exchange calendars: market status at `ts`. */
+  status?(ts: number): "OPEN" | "CLOSED" | "EXCLUDED" | "OUTSIDE_COVERAGE";
 }
 
 /**

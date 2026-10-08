@@ -29,3 +29,5 @@ Rules:
    symbol, latest bar). It may NOT expose threshold formulas, ATR multipliers, R:R internals, state-machine thresholds,
    provider normalization internals, options ranking internals or agent prompts. The root scanner checks app client
    sources for these patterns and the bundle guard checks built chunks (plus service-role names, JWTs and test-only machinery).
+9. Calibration and backtest reports are INTERNAL. Never publish hypothetical results as performance, and always keep
+   the SYNTHETIC / hypothetical disclaimers. Notifications use fixed templates only (no thresholds, levels or reasons).

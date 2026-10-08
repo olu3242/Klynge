@@ -66,6 +66,8 @@ export interface DataDecisionView {
   source: "PROVIDER" | "IMPORT";
   provenance: MarketProvenanceView[];
   options: { decision: string; reasons: string[] } | null;
+  /** Your risk preferences (restrict-only). The engine decision above is unchanged by them. */
+  userPolicy: { withinUserPolicy: boolean; vetoes: { code: string; reason: string; scope: string }[] } | null;
 }
 
 export interface MarketProvenanceView {

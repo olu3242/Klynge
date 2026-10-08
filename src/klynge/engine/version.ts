@@ -1,6 +1,6 @@
-export const KLYNGE_ENGINE_VERSION = "0.5.0";
+export const KLYNGE_ENGINE_VERSION = "0.6.0";
 
-export const KLYNGE_RULE_VERSION = "auth-live-data-v1";
+export const KLYNGE_RULE_VERSION = "production-calibration-v1";
 
 /** Historical rule provenance. Never delete entries — recorded decisions reference them. */
 export const KLYNGE_RULE_HISTORY = Object.freeze([
@@ -24,6 +24,11 @@ export const KLYNGE_RULE_HISTORY = Object.freeze([
     engineVersion: "0.5.0",
     ruleVersion: "auth-live-data-v1",
     summary: "Provider contracts, symbol mapping, feed normalization + provenance, fail-closed provider failures, DATA runtime with restored lifecycle memory, idempotency, restart recovery, visual→data handoff (hints only), runtime alerts.",
+  }),
+  Object.freeze({
+    engineVersion: "0.6.0",
+    ruleVersion: "production-calibration-v1",
+    summary: "Exchange calendars (NYSE/CME, DST, holidays, fail-closed coverage), market-closed handling, dataset manifests + SHA-256, report-only sensitivity calibration with human-approved policy proposals, event-driven hypothetical backtests, user risk policies (restrict-only).",
   }),
 ] as const);
 

@@ -32,12 +32,15 @@ const SERVER_ENV = {
   ...process.env,
   NODE_ENV: "production",
   KLYNGE_TEST_MODE: "1",
+  KLYNGE_E2E_RUN: "1",
   KLYNGE_AUTH: "mock",
   KLYNGE_TEST_AUTH_SECRET: "e2e-only-secret-not-for-production",
   KLYNGE_EXTRACTOR: "mock",
   KLYNGE_PROVIDER: "mock",
   KLYNGE_STORE: "file",
   KLYNGE_STORE_FILE: path.join(STATE_DIR, "store.json"),
+  KLYNGE_ACCOUNT_STORE_FILE: path.join(STATE_DIR, "account.json"),
+  KLYNGE_EMAIL: "mock",
   KLYNGE_IMAGE_RETENTION: "SESSION",
 };
 
@@ -294,6 +297,57 @@ try {
   await w.context.close();
   await b.context.close();
 
+  // ── 10b. Production-readiness journeys (Batches 51–60) ─────────────────────────────────────────────
+  const headersRes = await fetch(`${BASE}/app`);
+  const csp = headersRes.headers.get("content-security-policy") ?? "";
+  check("security headers: CSP, frame-ancestors none, nosniff, X-Frame-Options DENY", /default-src 'self'/.test(csp) && /frame-ancestors 'none'/.test(csp) && headersRes.headers.get("x-content-type-options") === "nosniff" && headersRes.headers.get("x-frame-options") === "DENY");
+  const csrf1 = await fetch(`${BASE}/api/journal`, { method: "POST", headers: { origin: "https://evil.example", "content-type": "application/json" }, body: "{}" });
+  const csrf2 = await fetch(`${BASE}/api/settings`, { method: "POST", headers: { "sec-fetch-site": "cross-site", "content-type": "application/json" }, body: "{}" });
+  check("CSRF: cross-origin / cross-site state changes rejected (403)", csrf1.status === 403 && csrf2.status === 403, `${csrf1.status},${csrf2.status}`);
+  const health = await (await fetch(`${BASE}/api/health`)).json();
+  check("public health probe exposes nothing but liveness", JSON.stringify(health) === '{"status":"ok"}');
+
+  const c = await workspace(END - 5 * MIN);
+  await signInGoogle(c, "cy@example.com");
+  await c.page.goto(`${BASE}/app/settings`);
+  await c.page.getByLabel("Allowed instruments (comma separated)").fill("NVDA");
+  await c.page.getByLabel(/Email me at my verified address/).check();
+  await c.page.getByLabel("Minimum importance").selectOption("INFO");
+  await c.page.getByRole("button", { name: "Save settings" }).click();
+  await c.page.getByTestId("settings-saved").waitFor();
+  check("risk preferences + email opt-in saved (verified address only)", (await c.page.getByText("(cy@example.com)").count()) === 1);
+  await c.page.goto(`${BASE}/app`);
+  await c.upload("tsla-5m-bull", END - 5 * MIN);
+  await c.clock(END);
+  await connect(c);
+  check("policy veto precedence: engine CALL_SETUP unchanged, user policy marks it outside limits", (await c.page.getByTestId("data-decision-value").innerText()) === "CALL_SETUP" && (await c.page.getByTestId("user-policy").getAttribute("data-within")) === "false" && /not in your instrument list/.test(await c.page.getByTestId("user-policy").innerText()));
+  const mails = (await c.api(`/api/test/emails?to=${encodeURIComponent("cy@example.com")}`)).body ?? [];
+  check("email notification delivered once per alert, sanitized (no prices/thresholds)", mails.length >= 1 && mails.some((m) => /CALL SETUP/.test(m.subject)) && mails.every((m) => !/\d+\.\d{2,}|ATR|reward/i.test(m.subject + m.text)) && new Set(mails.map((m) => m.subject)).size === mails.length, String(mails.length));
+  await connect(c);
+  check("notification idempotency: reprocessing sends nothing new", ((await c.api(`/api/test/emails?to=${encodeURIComponent("cy@example.com")}`)).body ?? []).length === mails.length);
+  await c.page.goto(`${BASE}/app/status`);
+  const statusText = await c.page.locator("main").innerText();
+  check("operational status: provider health, freshness, delivery, audit", /Market data/i.test(statusText) && /TSLA: /.test(statusText) && /Delivered [1-9]/.test(statusText) && /data\.connected/.test(statusText) && /auth\.sign_in/.test(statusText), statusText.replace(/\s+/g, " ").slice(0, 600));
+  for (const page of ["/app/settings", "/app/status"]) {
+    await c.page.goto(`${BASE}${page}`);
+    for (const width of [1440, 390]) {
+      await c.page.setViewportSize({ width, height: 900 });
+      const overflow = await c.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      check(`no horizontal overflow ${page} @${width}`, overflow <= 0, overflow > 0 ? `${overflow}px` : "");
+    }
+    await c.page.setViewportSize({ width: 1440, height: 900 });
+    const pa = await c.page.evaluate(() => [...document.querySelectorAll("input, select, textarea")].filter((el) => !(el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`)) && !el.closest("label") && el.type !== "hidden").length);
+    check(`accessibility basics ${page} (labelled controls)`, pa === 0, String(pa));
+  }
+  const stolen = (await c.context.cookies()).find((k) => k.name === "klynge_mock_session")?.value;
+  await c.page.goto(`${BASE}/app`);
+  await c.page.getByRole("button", { name: "Sign out" }).click();
+  await c.page.waitForURL(/\/app/);
+  const replay = await fetch(`${BASE}/api/history`, { headers: { cookie: `klynge_mock_session=${stolen}; klynge_session=${crypto.randomUUID()}; klynge_trial=${crypto.randomUUID()}` } });
+  check("sign-out revokes the session: a copied cookie no longer authenticates", replay.status === 401, String(replay.status));
+  check("no browser console errors (production journeys)", c.errors.length === 0, c.errors.slice(0, 3).join(" | "));
+  await c.context.close();
+
   // ── 11. Skewed chart set => BLOCKED (anonymous) ─────────────────────────────────────────────────────
   const s = await workspace(T);
   await s.upload("tsla-5m-bull", T);
@@ -332,7 +386,7 @@ try {
 
 // ── 14. Log hygiene: no image bytes, account text, auth tokens, emails or secrets ─────────────────────
 const png = readFileSync(img("broker-balance-tsla")).toString("base64");
-const leaks = ["iVBORw0KGgo", png.slice(200, 260), "4471-0098", "data:image/", "eyJ", "e2e-only-secret", "ada@example.com", "bea@example.com", "service_role"].filter((m) => logs.includes(m));
+const leaks = ["iVBORw0KGgo", png.slice(200, 260), "4471-0098", "data:image/", "eyJ", "e2e-only-secret", "ada@example.com", "bea@example.com", "cy@example.com", "service_role"].filter((m) => logs.includes(m));
 check("server logs contain no image data or account text", leaks.length === 0, leaks.join(", "));
 rmSync(STATE_DIR, { recursive: true, force: true });
 

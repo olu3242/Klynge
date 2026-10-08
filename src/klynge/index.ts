@@ -21,3 +21,8 @@ export * from "./snapshot/index.ts";
 export * from "./alerts/index.ts";
 export * from "./providers/index.ts";
 export * from "./runtime/index.ts";
+export * from "./calendar/index.ts";
+export * from "./history/index.ts";
+export * from "./calibration/index.ts";
+export * from "./backtest/index.ts";
+export * from "./user-policy/index.ts";
