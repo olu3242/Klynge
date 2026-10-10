@@ -1,5 +1,6 @@
 import type { WorkflowJob } from "./queue.ts";
 import type { WorkerQueue } from "./worker.ts";
+import type { LeaseRenewer } from "./heartbeat.ts";
 
 /** Use only with a trusted server-side service-role RPC client.
  * The DB functions enforce atomic claim, lease expiry and fencing.
@@ -21,7 +22,7 @@ function jobFromRow(raw: unknown): WorkflowJob {
     fencingToken: Number(row.fencing_token),
   };
 }
-export class PostgresWorkflowQueue implements WorkerQueue {
+export class PostgresWorkflowQueue implements WorkerQueue, LeaseRenewer {
   constructor(private readonly db: QueueRpc) {}
   async claim(workerId: string, nowMs: number, leaseMs: number, limit: number) {
     const { data, error } = await this.db.rpc("klynge_claim_workflow_jobs", {
@@ -30,6 +31,15 @@ export class PostgresWorkflowQueue implements WorkerQueue {
     if (error) throw new Error("WORKFLOW_CLAIM_FAILED");
     if (!Array.isArray(data)) throw new Error("INVALID_CLAIM_RESPONSE");
     return data.map(jobFromRow);
+  }
+  async renew(tenantId: string, jobId: string, workerId: string, token: number, nowMs: number, extendMs: number) {
+    const { data, error } = await this.db.rpc("klynge_renew_workflow_lease", {
+      p_tenant: tenantId, p_job: jobId, p_worker: workerId,
+      p_token: token, p_now: nowMs, p_extend_ms: extendMs,
+    });
+    if (error) throw new Error("WORKFLOW_RENEW_FAILED");
+    if (typeof data !== "boolean") throw new Error("INVALID_RENEW_RESPONSE");
+    return data;
   }
   async finish(tenantId: string, jobId: string, workerId: string, fencingToken: number, nowMs: number, succeeded: boolean) {
     const { data, error } = await this.db.rpc("klynge_finish_workflow_job", {
