@@ -32,7 +32,12 @@ jobs:
       - run: npm run build
       - name: Install Chromium for landing QA
         run: npx --yes playwright@1.56.1 install --with-deps chromium
-      - run: npm run qa
+      - name: Run landing QA with installed Playwright Chromium
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/pw-browsers
+        run: |
+          npx --yes playwright@1.56.1 install chromium
+          npm run qa
 
   workflow-postgres:
     name: Workflow OS isolated PostgreSQL and RLS
