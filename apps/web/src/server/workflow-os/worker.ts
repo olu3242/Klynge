@@ -1,4 +1,5 @@
 import type { WorkflowJob } from "./queue.ts";
+import { maintainLease, type LeaseClock, type LeaseRenewer } from "./heartbeat.ts";
 import { authorizeAgent, type AgentCapability, type AgentDefinition, type AgentRequest } from "./agent-runtime.ts";
 
 /** Worker contract: the backing queue MUST atomically claim and fence acknowledgements.
@@ -18,6 +19,7 @@ export interface WorkerDependencies {
   resolve(job: WorkflowJob): Promise<WorkerAssignment | null>;
   execute(job: WorkflowJob, assignment: WorkerAssignment, signal: AbortSignal): Promise<void>;
   now(): number;
+  lease?: { renewer: LeaseRenewer; clock: LeaseClock; intervalMs: number };
 }
 export interface WorkerReport {
   claimed: number;
@@ -41,10 +43,21 @@ export async function runWorkerBatch(
     let success = false;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), Math.max(1, Math.min(leaseMs - 100, 300000)));
+    const heartbeatStop = new AbortController();
+    let leaseLost = false;
+    let heartbeat: Promise<void> | null = null;
     try {
       if (job.status !== "LEASED" || job.leaseOwner !== workerId ||
           job.leaseUntilMs === null || job.leaseUntilMs <= deps.now())
         throw new Error("INVALID_CLAIM");
+      if (deps.lease) {
+        const lease = deps.lease;
+        heartbeat = maintainLease({ job, workerId, extendMs: leaseMs,
+          intervalMs: lease.intervalMs, clock: lease.clock, renewer: lease.renewer,
+          signal: heartbeatStop.signal,
+          onLeaseLost: () => { leaseLost = true; controller.abort(); },
+        }).catch(() => { leaseLost = true; controller.abort(); });
+      }
       const assignment = await deps.resolve(job);
       if (!assignment || assignment.request.tenantId !== job.tenantId ||
           assignment.request.workflowId !== job.workflowId) {
@@ -53,7 +66,7 @@ export async function runWorkerBatch(
         const verdict = authorizeAgent(deps.registry, assignment.request, assignment.allowedCapabilities);
         if (verdict.kind === "AUTHORIZED") {
           await deps.execute(job, assignment, controller.signal);
-          if (controller.signal.aborted) throw new Error("DEADLINE_EXCEEDED");
+          if (controller.signal.aborted || leaseLost) throw new Error("DEADLINE_OR_LEASE_LOST");
           success = true;
         } else report.denied++;
       }
@@ -61,7 +74,10 @@ export async function runWorkerBatch(
       // Fail closed. Do not expose tenant data or agent inputs in worker telemetry.
     } finally {
       clearTimeout(timeout);
+      heartbeatStop.abort();
+      if (heartbeat) await heartbeat;
     }
+    if (leaseLost) success = false;
     const acknowledged = await deps.queue.finish(job.tenantId, job.jobId, workerId, job.fencingToken, deps.now(), success);
     if (!acknowledged) report.leaseLost++;
     else if (success) report.succeeded++;
