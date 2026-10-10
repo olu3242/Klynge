@@ -33,6 +33,26 @@ jobs:
         run: npx --yes playwright@1.56.1 install --with-deps chromium
       - run: npm run qa
 
+  workflow-postgres:
+    name: Workflow OS isolated PostgreSQL and RLS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install PostgreSQL binaries
+        run: sudo apt-get update && sudo apt-get install -y postgresql
+      - run: npm ci
+      - name: Certify migrations and local PostgreSQL workflow controls
+        run: npm run test:rls
+
   app:
     name: Subscriber app static and unit gates
     runs-on: ubuntu-latest
