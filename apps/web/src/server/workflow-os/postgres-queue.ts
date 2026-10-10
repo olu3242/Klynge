@@ -23,7 +23,8 @@ function jobFromRow(raw: unknown): WorkflowJob {
   };
 }
 export class PostgresWorkflowQueue implements WorkerQueue, LeaseRenewer {
-  constructor(private readonly db: QueueRpc) {}
+  private readonly db: QueueRpc;
+  constructor(db: QueueRpc) { this.db = db; }
   async claim(workerId: string, nowMs: number, leaseMs: number, limit: number) {
     const { data, error } = await this.db.rpc("klynge_claim_workflow_jobs", {
       p_worker: workerId, p_now: nowMs, p_lease_ms: leaseMs, p_limit: limit,
