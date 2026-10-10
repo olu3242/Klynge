@@ -4,7 +4,7 @@ import { PostgresWorkflowGovernanceStore } from "./governance-store.ts";
 import type { SqlExecutor } from "./postgres-store.ts";
 test("approval lookup uses tenant and approval identifier parameters", async () => {
   const seen: { sql: string; params: readonly unknown[] }[] = [];
-  const db: SqlExecutor = { async query<T extends Record<string, unknown>>(sql, params) {
+  const db: SqlExecutor = { async query<T extends Record<string, unknown>>(sql: string, params: readonly unknown[]) {
     seen.push({ sql, params }); return { rows: [] as T[], rowCount: 0 };
   } };
   const store = new PostgresWorkflowGovernanceStore(db);
@@ -14,7 +14,7 @@ test("approval lookup uses tenant and approval identifier parameters", async () 
 });
 test("approval update requires pending state and revision CAS", async () => {
   let sql = "";
-  const db: SqlExecutor = { async query<T extends Record<string, unknown>>(statement) {
+  const db: SqlExecutor = { async query<T extends Record<string, unknown>>(statement: string, _params: readonly unknown[]) {
     sql = statement; return { rows: [{ approval_id: "a1" } as unknown as T], rowCount: 1 };
   } };
   const store = new PostgresWorkflowGovernanceStore(db);
