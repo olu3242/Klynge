@@ -1,4 +1,5 @@
 import type { WorkflowJob } from "./queue.ts";
+import type { Checkpoint } from "./checkpoints.ts";
 import { maintainLease, type LeaseClock, type LeaseRenewer } from "./heartbeat.ts";
 import { authorizeAgent, type AgentCapability, type AgentDefinition, type AgentRequest } from "./agent-runtime.ts";
 
@@ -18,6 +19,11 @@ export interface WorkerDependencies {
   registry: ReadonlyMap<string, AgentDefinition>;
   resolve(job: WorkflowJob): Promise<WorkerAssignment | null>;
   execute(job: WorkflowJob, assignment: WorkerAssignment, signal: AbortSignal): Promise<void>;
+  /** Required for persisted workflow steps; never use standalone finish() on success. */
+  atomic?: {
+    prepare(job: WorkflowJob, assignment: WorkerAssignment): Promise<{ eventId: string; expectedRevision: number; checkpoint: Checkpoint }>;
+    complete(input: { tenantId: string; jobId: string; workerId: string; fencingToken: number; eventId: string; expectedRevision: number; checkpoint: Checkpoint; nowMs: number }): Promise<boolean>;
+  };
   now(): number;
   lease?: { renewer: LeaseRenewer; clock: LeaseClock; intervalMs: number };
 }
@@ -78,7 +84,28 @@ export async function runWorkerBatch(
       if (heartbeat) await heartbeat;
     }
     if (leaseLost) success = false;
-    const acknowledged = await deps.queue.finish(job.tenantId, job.jobId, workerId, job.fencingToken, deps.now(), success);
+    let acknowledged = false;
+    try {
+      if (success && deps.atomic) {
+        const assignment = await deps.resolve(job);
+        if (!assignment || assignment.request.tenantId !== job.tenantId ||
+          assignment.request.workflowId !== job.workflowId) throw new Error("INVALID_ATOMIC_ASSIGNMENT");
+        const prepared = await deps.atomic.prepare(job, assignment);
+        acknowledged = await deps.atomic.complete({ tenantId: job.tenantId, jobId: job.jobId,
+          workerId, fencingToken: job.fencingToken, ...prepared, nowMs: deps.now() });
+      } else if (success) {
+        // A successful workflow must commit its checkpoint and job atomically.
+        // Legacy uncheckpointed execution cannot be acknowledged as success.
+        acknowledged = await deps.queue.finish(job.tenantId, job.jobId, workerId, job.fencingToken, deps.now(), false);
+        success = false;
+      } else {
+        acknowledged = await deps.queue.finish(job.tenantId, job.jobId, workerId, job.fencingToken, deps.now(), false);
+      }
+    } catch {
+      // Fail closed: lease expiration will allow recovery; do not mark success.
+      report.failed++;
+      continue;
+    }
     if (!acknowledged) report.leaseLost++;
     else if (success) report.succeeded++;
     else report.failed++;
