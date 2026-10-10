@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - claude/amazing-davinci-39fqur
 
 permissions:
   contents: read
