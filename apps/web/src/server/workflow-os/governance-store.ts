@@ -5,7 +5,8 @@ import type { SqlExecutor } from "./postgres-store.ts";
 
 /** Only call after verifying the authenticated reviewer's role server-side. */
 export class PostgresWorkflowGovernanceStore {
-  constructor(private readonly db: SqlExecutor) {}
+  private readonly db: SqlExecutor;
+  constructor(db: SqlExecutor) { this.db = db; }
   async load(tenantId: string, approvalId: string): Promise<Approval | null> {
     const r = await this.db.query<Record<string, unknown>>(
       "select tenant_id, approval_id, workflow_id, action, requested_by, status, reviewer_id, decided_at_ms, expires_at_ms, revision from public.klynge_workflow_approvals where tenant_id=$1 and approval_id=$2",
