@@ -23,6 +23,13 @@ function setup(capability: "market.read" | "risk.evaluate" = "market.read") {
     },
     async execute() { executed++; },
     now: () => 1000,
+    atomic: {
+      async prepare() { return { eventId: "event1", expectedRevision: 1, checkpoint: {
+        tenantId: "tenant1", workflowId: "wf1", stepId: "verify", revision: 2,
+        evidenceIds: ["e1"], outputHash: "a".repeat(64), completedAtMs: 1000,
+      } }; },
+      async complete(input) { assert.equal(input.fencingToken, 4); calls.push(true); return true; },
+    },
   };
   return { deps, calls, getExecuted: () => executed };
 }
@@ -44,4 +51,13 @@ test("reports lost lease without claiming successful completion", async () => {
   const result = await runWorkerBatch(s.deps, "worker1");
   assert.equal(result.leaseLost, 1);
   assert.equal(result.succeeded, 0);
+});
+
+test("successful agent without atomic completion is never acknowledged as success", async () => {
+  const s = setup();
+  delete s.deps.atomic;
+  const result = await runWorkerBatch(s.deps, "worker1");
+  assert.equal(result.succeeded, 0);
+  assert.equal(result.failed, 1);
+  assert.deepEqual(s.calls, [false]);
 });
