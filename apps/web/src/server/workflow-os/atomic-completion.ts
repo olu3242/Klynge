@@ -6,7 +6,8 @@ import { validateCheckpoint } from "./checkpoints.ts";
  * Only invoke from a trusted, authorized service-role worker.
  */
 export class AtomicWorkflowCompletion {
-  constructor(private readonly db: QueueRpc) {}
+  private readonly db: QueueRpc;
+  constructor(db: QueueRpc) { this.db = db; }
   async complete(input: {
     tenantId: string; jobId: string; workerId: string; fencingToken: number;
     eventId: string; expectedRevision: number; checkpoint: Checkpoint; nowMs: number;
