@@ -29,6 +29,9 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
+      - name: Install Chromium for landing QA
+        run: npx --yes playwright@1.56.1 install --with-deps chromium
+      - run: npm run qa
 
   app:
     name: Subscriber app static and unit gates
@@ -48,7 +51,15 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - name: Build production subscriber app
+        run: npm run build
+      - run: npm run bundle:check
+      - name: Install Chromium for isolated browser E2E
+        run: npx --yes playwright@1.56.1 install --with-deps chromium
+      - name: Execute mock-mode browser journeys
+        run: npm run e2e
 
 # These gates deliberately do not certify hosted data providers, licensed feeds,
-# Supabase RLS, browser E2E, email delivery, billing, or production deployment.
+# hosted Supabase RLS, real-provider journeys, email delivery, billing, or production deployment.
+# Browser E2E is isolated mock-mode only; never interpret it as live certification.
 # Those require separately authorized, environment-specific certification.
