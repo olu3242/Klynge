@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { requestContext } from "@/server/http";
 import { SupabaseReviewerAuthenticator } from "@/server/workflow-os/supabase-reviewer";
 import { PostgresWorkflowGovernanceStore } from "@/server/workflow-os/governance-store";
-import { handleApprovalRequest } from "@/server/workflow-os/approval-handler";
+import { handleAtomicApproval } from "@/server/workflow-os/atomic-approval-handler";
+import type { QueueRpc } from "@/server/workflow-os/postgres-queue";
 import type { SqlExecutor } from "@/server/workflow-os/postgres-store";
 
 export const runtime = "nodejs";
@@ -29,9 +30,30 @@ export async function POST(req: Request) {
         return { rows: result.rows as T[], rowCount: result.rowCount };
       },
     };
-    const outcome = await handleApprovalRequest(
+    const lookup = new PostgresWorkflowGovernanceStore(db);
+    const rpc: QueueRpc = {
+      async rpc(name, args) {
+        if (name !== "klynge_decide_workflow_approval") throw new Error("RPC_DENIED");
+        const result = await pool.query(
+          "select public.klynge_decide_workflow_approval($1::uuid,$2::text,$3::text,$4::integer,$5::integer,$6::boolean,$7::bigint,$8::text) as applied",
+          [args.p_tenant, args.p_approval, args.p_reviewer, args.p_expected_revision,
+           args.p_workflow_revision, args.p_approve, args.p_now, args.p_event],
+        );
+        return { data: result.rows[0]?.applied ?? false, error: null };
+      },
+    };
+    const outcome = await handleAtomicApproval(
       new SupabaseReviewerAuthenticator(ctx.gateway),
-      new PostgresWorkflowGovernanceStore(db), body, Date.now(),
+      {
+        load: (tenantId, approvalId) => lookup.load(tenantId, approvalId),
+        async workflowRevision(tenantId, workflowId) {
+          const result = await db.query<{ revision: number }>(
+            "select revision from public.klynge_workflow_instances where tenant_id=$1 and workflow_id=$2 and status='WAITING_HUMAN'",
+            [tenantId, workflowId],
+          );
+          return result.rows[0]?.revision ?? null;
+        },
+      }, rpc, body, Date.now(),
     );
     return NextResponse.json(outcome.body, {
       status: outcome.status, headers: { "cache-control": "no-store" },
