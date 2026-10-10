@@ -11,7 +11,8 @@ export interface WorkflowStore {
 }
 
 export class WorkflowOrchestrator {
-  constructor(private readonly store: WorkflowStore) {}
+  private readonly store: WorkflowStore;
+  constructor(store: WorkflowStore) { this.store = store; }
 
   async create(input: {
     workflowId: string; tenantId: string; definitionId: string;
