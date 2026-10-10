@@ -1,7 +1,8 @@
 import type { QueueRpc } from "./postgres-queue.ts";
 /** Atomic decision + workflow transition. Reviewer identity MUST be verified independently. */
 export class AtomicApprovalTransition {
-  constructor(private readonly db: QueueRpc) {}
+  private readonly db: QueueRpc;
+  constructor(db: QueueRpc) { this.db = db; }
   async decide(input: {
     tenantId: string; approvalId: string; reviewerId: string;
     approvalRevision: number; workflowRevision: number;
