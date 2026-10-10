@@ -6,7 +6,8 @@ import type { ReviewerAuthenticator, VerifiedReviewer } from "./approval-service
  * Approvals are tenant-scoped and never authorize brokerage execution.
  */
 export class SupabaseReviewerAuthenticator implements ReviewerAuthenticator {
-  constructor(private readonly gateway: AuthGateway) {}
+  private readonly gateway: AuthGateway;
+  constructor(gateway: AuthGateway) { this.gateway = gateway; }
   async authenticate(): Promise<VerifiedReviewer | null> {
     if (this.gateway.kind !== "supabase") return null;
     const user = await this.gateway.getUser();
