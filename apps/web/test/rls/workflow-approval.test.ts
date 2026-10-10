@@ -31,7 +31,7 @@ describe("Workflow approval local PostgreSQL integration", () => {
     }
     const r = await h.pool.query(`select has_function_privilege('authenticated',
       'public.klynge_decide_workflow_approval(uuid,text,text,integer,integer,boolean,bigint,text)', 'EXECUTE') as allowed`);
-    assert.equal(r.rows[0].allowed, false);
+    assert.equal(r.rows[0]?.allowed, false);
     await assert.rejects(as(h.pool, "authenticated", T,
       "select public.klynge_decide_workflow_approval($1::uuid,'a1','reviewer',0,0,true,100,'e')", [T]), /permission denied/);
   });
@@ -39,14 +39,14 @@ describe("Workflow approval local PostgreSQL integration", () => {
     for (const [tenant, reviewer, rev, now] of [
       [T, "requester", 0, 100], [OTHER, "reviewer", 0, 100],
       [T, "reviewer", 0, 10000], [T, "reviewer", 1, 100],
-    ] as const) assert.equal((await decide(tenant, reviewer, rev, now)).rows[0].ok, false);
+    ] as const) assert.equal((await decide(tenant, reviewer, rev, now)).rows[0]?.ok, false);
     const r = await h.pool.query("select status, revision from public.klynge_workflow_approvals where tenant_id=$1 and approval_id='a1'", [T]);
     assert.deepEqual(r.rows[0], { status: "PENDING", revision: 0 });
   });
   it("concurrent decisions commit exactly once and replay is rejected", async () => {
     const attempts = await Promise.all([decide(), decide(), decide()]);
-    assert.equal(attempts.filter(x => x.rows[0].ok).length, 1);
-    assert.equal((await decide()).rows[0].ok, false);
+    assert.equal(attempts.filter(x => x.rows[0]?.ok).length, 1);
+    assert.equal((await decide()).rows[0]?.ok, false);
     const a = await h.pool.query("select status, revision from public.klynge_workflow_approvals where tenant_id=$1", [T]);
     const w = await h.pool.query("select status, revision, processed_event_ids from public.klynge_workflow_instances where tenant_id=$1", [T]);
     assert.deepEqual(a.rows[0], { status: "APPROVED", revision: 1 });
