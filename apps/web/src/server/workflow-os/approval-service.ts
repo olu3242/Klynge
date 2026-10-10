@@ -17,7 +17,8 @@ export interface ApprovalRepository {
   decide(prior: Approval, next: Approval): Promise<boolean>;
 }
 export class ApprovalService {
-  constructor(private readonly auth: ReviewerAuthenticator, private readonly store: ApprovalRepository) {}
+  private readonly auth: ReviewerAuthenticator, private readonly store: ApprovalRepository;
+  constructor(auth: ReviewerAuthenticator, private readonly store: ApprovalRepository) { this.auth = auth; }
   async decide(input: {
     tenantId: string; approvalId: string; approve: boolean;
     expectedRevision: number; atMs: number;
