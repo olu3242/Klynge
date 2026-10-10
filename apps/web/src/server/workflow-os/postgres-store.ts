@@ -20,7 +20,8 @@ function decode(row: DbRow): WorkflowInstance {
   };
 }
 export class PostgresWorkflowStore implements WorkflowStore {
-  constructor(private readonly db: SqlExecutor) {}
+  private readonly db: SqlExecutor;
+  constructor(db: SqlExecutor) { this.db = db; }
   async get(tenantId: string, workflowId: string) {
     const result = await this.db.query<DbRow>(
       "select * from public.klynge_workflow_instances where tenant_id = $1 and workflow_id = $2",
