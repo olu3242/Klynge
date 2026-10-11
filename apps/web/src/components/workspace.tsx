@@ -41,6 +41,7 @@ export function Workspace({ initial }: { initial: WorkspaceView }) {
   const [symbol, setSymbol] = useState("");
   const [timeframe, setTimeframe] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [journey, setJourney] = useState<"BYOC" | "BYOT" | "COMBINED">("BYOC");
   const fileRef = useRef<HTMLInputElement>(null);
   const ids = { role: useId(), symbol: useId(), tf: useId(), file: useId(), ohlcv: useId(), note: useId(), connect: useId() };
 
@@ -88,6 +89,8 @@ export function Workspace({ initial }: { initial: WorkspaceView }) {
     if (file) void upload(file);
   };
 
+  const connectTicker = (ticker: string) => run(() => call("/api/data/connect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ symbol: ticker.trim().toUpperCase() }) }));
+
   const presetRole = (r: string) => {
     setRole(r);
     fileRef.current?.focus();
@@ -102,6 +105,39 @@ export function Workspace({ initial }: { initial: WorkspaceView }) {
           Klynge reads what is visible on your chart, tells you what it could not verify, and what it still needs before reaching a conclusion.
         </p>
       </div>
+
+      <Card aria-labelledby="journey-title">
+        <CardTitle id="journey-title">Choose how to analyze</CardTitle>
+        <div role="group" aria-label="Analysis input mode" className="mt-4 grid gap-2 sm:grid-cols-3">
+          {([
+            ["BYOC", "Bring Your Own Chart", "Upload or paste a broker screenshot"],
+            ["BYOT", "Bring Your Own Ticker", "Analyze licensed market data"],
+            ["COMBINED", "Chart + Ticker", "Compare visual evidence with verified data"],
+          ] as const).map(([mode, label, detail]) => (
+            <button key={mode} type="button" aria-pressed={journey === mode} onClick={() => setJourney(mode)}
+              className={`rounded-xl border p-3 text-left transition-colors ${journey === mode ? "border-k-lime bg-k-lime/10" : "border-k-border"}`}>
+              <span className="block font-semibold">{label}</span>
+              <span className="mt-1 block text-xs text-k-secondary">{detail}</span>
+            </button>
+          ))}
+        </div>
+        {journey !== "BYOC" && (
+          <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); if (symbol.trim()) void connectTicker(symbol); }}>
+            <Field label="Ticker symbol" id={ids.symbol + "-ticker"}>
+              <input id={ids.symbol + "-ticker"} className="input" value={symbol} maxLength={12}
+                onChange={(e) => setSymbol(e.target.value.toUpperCase())} placeholder="TSLA" required />
+            </Field>
+            <Button type="submit" disabled={busy || !symbol.trim() || view.account.kind !== "USER"}>
+              {journey === "COMBINED" ? "Verify chart against market data" : "Analyze ticker"}
+            </Button>
+            {view.account.kind !== "USER" && <p className="text-xs text-k-secondary">Sign in to access verified market data.</p>}
+          </form>
+        )}
+        <p className="mt-3 text-xs text-k-secondary">
+          Screenshots provide VISUAL observations only. Verified DATA requires an entitled market provider.
+          Missing, stale or conflicting data never becomes a verified trade setup.
+        </p>
+      </Card>
 
       <EvidenceBanner evidence={view.evidence} />
       <AccountNotice
@@ -121,7 +157,7 @@ export function Workspace({ initial }: { initial: WorkspaceView }) {
         }
       />
 
-      <Card aria-labelledby="upload-title">
+      {journey !== "BYOT" && <Card aria-labelledby="upload-title">
         <CardTitle id="upload-title">Chart intake</CardTitle>
         <div
           onDragOver={(e) => {
@@ -182,6 +218,8 @@ export function Workspace({ initial }: { initial: WorkspaceView }) {
           {error && <span className="text-k-danger" role="alert">⚠ {error}</span>}
         </div>
       </Card>
+
+      }
 
       <Completeness view={view} onAdd={presetRole} />
 
