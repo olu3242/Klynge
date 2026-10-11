@@ -16,7 +16,7 @@ export function crossCheckWorkspace(view: WorkspaceView, requestedTicker: string
   const verifiedSymbol = view.data?.symbol?.trim().toUpperCase() || null;
   const requested = requestedTicker.trim().toUpperCase();
   if (!target) return { status: "AWAITING_CHART", issues: ["Upload a target chart to compare with verified market data."], visualSymbol, verifiedSymbol, permitsVisualTradeSetup: false };
-  if (!verifiedSymbol || view.runtime?.status === "BLOCKED" || view.runtime?.status === "WAIT") return {
+  if (!verifiedSymbol || view.runtime?.status !== "DATA_VERIFIED") return {
     status: "AWAITING_DATA",
     issues: ["Verified market data is unavailable or blocked. Chart observations remain VISUAL only."],
     visualSymbol, verifiedSymbol, permitsVisualTradeSetup: false,
@@ -28,6 +28,9 @@ export function crossCheckWorkspace(view: WorkspaceView, requestedTicker: string
   const tf = target.fields.find((f) => f.field === "timeframe");
   if (!tf?.value || tf.status === "NOT_VERIFIED" || tf.status === "NOT_VISIBLE") issues.push("Chart timeframe is not verified.");
   else if (tf.value.toLowerCase() !== view.data?.timeframe?.toLowerCase()) issues.push(`Chart timeframe ${tf.value} differs from data timeframe ${view.data?.timeframe}.`);
+  if (target.captureTime > Date.now() + 60_000) issues.push("Chart capture time is in the future.");
+  if (Date.now() - target.captureTime > 15 * 60_000) issues.push("Chart is older than the 15-minute visual freshness window.");
+  if (view.data && Date.now() - view.data.asOf > 15 * 60_000) issues.push("Verified market analysis is older than 15 minutes.");
   if (target.roleViolation) issues.push(target.roleViolation);
   if (target.issues.length) issues.push("Chart extraction has unresolved issues.");
   if (view.visual?.blockers.length) issues.push("Visual context contains blockers.");
