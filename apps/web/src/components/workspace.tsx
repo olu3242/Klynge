@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { ProvenanceBadge } from "@/components/status";
 import { COMPACT_RISK_NOTICE } from "@/lib/notices";
+import { crossCheckWorkspace } from "@/lib/cross-check";
 import type { ChartView, DataDecisionView, EvidenceView, FieldView, RuntimeView, VisualContextView, WorkspaceView } from "@/lib/view-model";
 
 const ROLES = [
@@ -220,6 +221,27 @@ export function Workspace({ initial }: { initial: WorkspaceView }) {
       </Card>
 
       }
+
+      {journey === "COMBINED" && (() => {
+        const comparison = crossCheckWorkspace(view, symbol);
+        return (
+          <Card aria-labelledby="comparison-title">
+            <CardTitle id="comparison-title">Chart + ticker cross-check</CardTitle>
+            <p className="mt-2 font-semibold" role="status" data-testid="combined-status">{comparison.status.replaceAll("_", " ")}</p>
+            <p className="mt-1 text-sm text-k-secondary">
+              Chart: {comparison.visualSymbol ?? "not confirmed"} · Verified data: {comparison.verifiedSymbol ?? "unavailable"}
+            </p>
+            {comparison.issues.length > 0 && (
+              <ul className="mt-3 grid gap-2 text-sm text-k-warning">
+                {comparison.issues.map((issue) => <li key={issue}>{issue}</li>)}
+              </ul>
+            )}
+            <p className="mt-3 text-xs text-k-secondary">
+              A match is informational, not permission to trade. Visual evidence cannot authorize a setup.
+            </p>
+          </Card>
+        );
+      })()}
 
       <Completeness view={view} onAdd={presetRole} />
 
