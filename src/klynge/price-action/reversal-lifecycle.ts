@@ -17,10 +17,10 @@ export interface ReversalLifecycleInput {
 export interface ReversalLifecycleResult {
   phase: ReversalPhase;
   strategy: HistoricalReversalStrategy;
-  sweepIndex?: number;
-  retestIndex?: number;
-  confirmedIndex?: number;
-  invalidation?: number;
+  sweepIndex?: number | undefined;
+  retestIndex?: number | undefined;
+  confirmedIndex?: number | undefined;
+  invalidation?: number | undefined;
   reasons: readonly string[];
 }
 export function evaluateReversalLifecycle(input: ReversalLifecycleInput): ReversalLifecycleResult {
