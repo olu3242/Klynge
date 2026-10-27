@@ -32,10 +32,10 @@ export function evaluateReversalLifecycle(input: ReversalLifecycleInput): Revers
       !Number.isSafeInteger(maxBars) || maxBars<3 || levelKnownAt>evaluatedAt)
     return result("BLOCKED","Invalid level, ATR or lifecycle policy");
   for(let i=0;i<candles.length;i++){
-    const b=candles[i]!;
+    const b=(candles[i] as Candle);
     if(b.timeframe!=="5m" || ![b.timestamp,b.open,b.high,b.low,b.close,b.volume].every(Number.isFinite) ||
       b.high<Math.max(b.open,b.close) || b.low>Math.min(b.open,b.close) || b.high<b.low || b.volume<0 ||
-      b.timestamp+300000>evaluatedAt || (i>0 && b.timestamp<=candles[i-1]!.timestamp))
+      b.timestamp+300000>evaluatedAt || (i>0 && b.timestamp<=(candles[i-1] as Candle).timestamp))
       return result("BLOCKED","Unverified or unfinished five-minute candles");
   }
   const d=strategy==="K-HD-C"?1:-1;
@@ -43,7 +43,7 @@ export function evaluateReversalLifecycle(input: ReversalLifecycleInput): Revers
   let phase:ReversalPhase="WAITING", sweepIndex:number|undefined, retestIndex:number|undefined;
   let extreme:number|undefined;
   for(let i=0;i<candles.length;i++){
-    const b=candles[i]!;
+    const b=(candles[i] as Candle);
     if(b.timestamp<levelKnownAt) continue;
     if(sweepIndex!==undefined && i-sweepIndex>maxBars) return result("INVALIDATED","Reversal timed out",{sweepIndex,retestIndex});
     const adverse=d===1?b.low:b.high;
@@ -57,18 +57,18 @@ export function evaluateReversalLifecycle(input: ReversalLifecycleInput): Revers
     if(phase==="RECLAIMED"){
       if(favorable(b.close)<=0) return result("INVALIDATED","Reclaimed level lost",{sweepIndex});
       if(favorable(adverse)<=tol*atr){
-        retestIndex=i; extreme=d===1?Math.min(extreme!,adverse):Math.max(extreme!,adverse);
+        retestIndex=i; extreme=d===1?Math.min((extreme as number),adverse):Math.max((extreme as number),adverse);
         phase="RETESTING";
       }
       continue;
     }
     if(phase==="RETESTING"){
-      extreme=d===1?Math.min(extreme!,adverse):Math.max(extreme!,adverse);
+      extreme=d===1?Math.min((extreme as number),adverse):Math.max((extreme as number),adverse);
       if(favorable(b.close)<=0) return result("INVALIDATED","Retest closed through level",{sweepIndex,retestIndex});
-      const previous=candles[i-1]!;
+      const previous=(candles[i-1] as Candle);
       const priorExtreme=d===1?previous.high:previous.low;
       if(d*(b.close-priorExtreme)>0){
-        const invalidation=extreme!-d*tol*atr;
+        const invalidation=(extreme as number)-d*tol*atr;
         return result("CONFIRMED","Reversal price-action lifecycle confirmed; trade permission and risk still pending",{sweepIndex,retestIndex,confirmedIndex:i,invalidation});
       }
     }
