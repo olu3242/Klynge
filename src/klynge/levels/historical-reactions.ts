@@ -35,7 +35,7 @@ export function discoverHistoricalReactions(input: ReactionMemoryInput): readonl
     return b.timestamp + duration <= evaluatedAt;
   });
   for (let i = 1; i < candles.length; i++)
-    if (candles[i]!.timestamp <= candles[i-1]!.timestamp) throw new RangeError("History must be strictly ordered");
+    if ((candles[i] as Candle).timestamp <= (candles[i-1] as Candle).timestamp) throw new RangeError("History must be strictly ordered");
   const events: { side: ReactionSide; price: number; timestamp: number; magnitude: number }[] = [];
   for (const b of eligible) {
     if (b.close > b.open && b.close > b.low)
@@ -45,13 +45,13 @@ export function discoverHistoricalReactions(input: ReactionMemoryInput): readonl
   }
   const groups: typeof events[] = [];
   for (const event of events) {
-    const group = groups.find(g => g[0]!.side === event.side && Math.abs(event.price - g.reduce((s,e)=>s+e.price,0)/g.length) <= tolerance);
+    const group = groups.find(g => (g[0] as (typeof g)[number]).side === event.side && Math.abs(event.price - g.reduce((s,e)=>s+e.price,0)/g.length) <= tolerance);
     if (group) group.push(event);
     else groups.push([event]);
   }
   return groups.filter(g=>g.length >= minimumTouches).map(g=>({
-    side:g[0]!.side, price:g.reduce((s,e)=>s+e.price,0)/g.length, touches:g.length,
-    firstTouchedAt:g[0]!.timestamp,lastTouchedAt:g[g.length-1]!.timestamp,
+    side:(g[0] as (typeof g)[number]).side, price:g.reduce((s,e)=>s+e.price,0)/g.length, touches:g.length,
+    firstTouchedAt:(g[0] as (typeof g)[number]).timestamp,lastTouchedAt:(g[g.length-1] as (typeof g)[number]).timestamp,
     strongestReaction:Math.max(...g.map(e=>e.magnitude))
   })).sort((a,b)=>b.touches-a.touches || b.lastTouchedAt-a.lastTouchedAt);
 }
