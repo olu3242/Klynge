@@ -35,7 +35,7 @@ export function evaluateReversalRisk(input: ReversalRiskInput): ReversalRiskDeci
     return blocked("Historical level not verified as of evaluation");
   if(input.spx!==side || input.mnq!==side)
     return blocked("SPX and MNQ must align with reversal direction");
-  if(!Number.isFinite(input.relativeVolume) || input.relativeVolume!<1.2)
+  if(!Number.isFinite(input.relativeVolume) || (input.relativeVolume ?? Number.NaN) < 1.2)
     return blocked("Verified confirmation relative volume >= 1.2 required");
   if(!Number.isFinite(input.currentPrice) || input.currentPrice<=0 ||
      !Number.isFinite(input.atr14) || input.atr14<=0)
