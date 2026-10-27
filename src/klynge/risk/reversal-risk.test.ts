@@ -10,7 +10,7 @@ describe("reversal risk gate",()=>{
  it("passes only structural risk eligibility, not trade certification",()=>{
   const result=evaluateReversalRisk(base());
   assert.equal(result.status,"RISK_ELIGIBLE");
-  assert.ok(result.risk?.rewardRiskRatio!>=2);
+  assert.ok((result.risk?.rewardRiskRatio ?? 0) >= 2);
  });
  it("blocks missing relative volume",()=>assert.equal(evaluateReversalRisk({...base(),relativeVolume:NaN}).status,"BLOCKED"));
  it("blocks mixed regime",()=>assert.equal(evaluateReversalRisk({...base(),mnq:"BEARISH"}).status,"BLOCKED"));
