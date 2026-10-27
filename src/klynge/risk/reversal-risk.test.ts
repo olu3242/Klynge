@@ -12,7 +12,7 @@ describe("reversal risk gate",()=>{
   assert.equal(result.status,"RISK_ELIGIBLE");
   assert.ok(result.risk?.rewardRiskRatio!>=2);
  });
- it("blocks missing relative volume",()=>assert.equal(evaluateReversalRisk({...base(),relativeVolume:undefined}).status,"BLOCKED"));
+ it("blocks missing relative volume",()=>assert.equal(evaluateReversalRisk({...base(),relativeVolume:NaN}).status,"BLOCKED"));
  it("blocks mixed regime",()=>assert.equal(evaluateReversalRisk({...base(),mnq:"BEARISH"}).status,"BLOCKED"));
  it("blocks unconfirmed lifecycle",()=>assert.equal(evaluateReversalRisk({...base(),lifecycle:{...base().lifecycle,phase:"RETESTING" as const}}).status,"BLOCKED"));
  it("blocks inadequate target reward",()=>assert.equal(evaluateReversalRisk({...base(),targets:[{...target,price:102}]}).status,"BLOCKED"));
