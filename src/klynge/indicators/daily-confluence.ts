@@ -14,7 +14,7 @@ export function evaluateDailyConfluence(bars: readonly Candle[], evaluatedAt: nu
     const b = bars[i] as Candle;
     if (b.timeframe !== "1d" || ![b.timestamp,b.open,b.high,b.low,b.close,b.volume].every(Number.isFinite) ||
         b.low > Math.min(b.open,b.close) || b.high < Math.max(b.open,b.close) || b.volume < 0 ||
-        (i > 0 && b.timestamp <= bars[i-1] as Candle.timestamp))
+        (i > 0 && b.timestamp <= (bars[i-1] as Candle).timestamp))
       throw new RangeError("Invalid daily OHLCV history");
   }
   const closed = bars.filter(b=>b.timestamp+86400000<=evaluatedAt);
@@ -25,5 +25,5 @@ export function evaluateDailyConfluence(bars: readonly Candle[], evaluatedAt: nu
   const sma50 = sma(values.slice(-50));
   const direction = close > sma9 && close > sma50 ? "BULLISH" :
     close < sma9 && close < sma50 ? "BEARISH" : "MIXED";
-  return {asOf:closed[closed.length-1] as Candle.timestamp+86400000,sma9,sma50,close,direction};
+  return {asOf:(closed[closed.length-1] as Candle).timestamp+86400000,sma9,sma50,close,direction};
 }
