@@ -41,26 +41,26 @@ export function evaluateHistoricalReversal(input: HistoricalReversalInput): Hist
   if (input.candles.length < 2) return blocked("At least two completed five-minute bars required");
   const bars = input.candles;
   for (let i = 0; i < bars.length; i++) {
-    const b = bars[i]!;
+    const b = (bars[i] as Candle);
     if (b.timeframe !== "5m" || ![b.open,b.high,b.low,b.close,b.volume,b.timestamp].every(Number.isFinite) ||
         b.low > Math.min(b.open,b.close) || b.high < Math.max(b.open,b.close) || b.volume < 0 ||
-        b.timestamp + 300000 > input.evaluatedAt || (i > 0 && b.timestamp <= bars[i-1]!.timestamp))
+        b.timestamp + 300000 > input.evaluatedAt || (i > 0 && b.timestamp <= (bars[i-1] as Candle).timestamp))
       return blocked("Invalid, unfinished, or unordered five-minute OHLCV");
   }
-  if (input.levelKnownAt > bars[0]!.timestamp) return blocked("Historical level was not known at evaluation start");
+  if (input.levelKnownAt > (bars[0] as Candle).timestamp) return blocked("Historical level was not known at evaluation start");
   if (![input.dailySma9,input.dailySma50,input.vwap,input.ema9].every(v => v !== undefined && Number.isFinite(v) && v > 0))
     return blocked("Verified SMA9, SMA50, VWAP and EMA9 required");
   if (!input.spx || !input.mnq || input.spx !== direction || input.mnq !== direction)
     return blocked("SPX/MNQ regime not aligned or missing");
-  const sweep = bars[bars.length - 2]!;
-  const follow = bars[bars.length - 1]!;
+  const sweep = (bars[bars.length - 2] as Candle);
+  const follow = (bars[bars.length - 1] as Candle);
   const defended = direction === "BULLISH"
     ? sweep.low < input.level && sweep.close > input.level && follow.close > input.level && follow.close > follow.open
     : sweep.high > input.level && sweep.close < input.level && follow.close < input.level && follow.close < follow.open;
   if (!defended) return { strategy: input.strategy, direction, state: "WAIT", reasons: ["Historical sweep and continuation not observed"] };
   const momentum = direction === "BULLISH"
-    ? follow.close > input.vwap! && follow.close > input.ema9!
-    : follow.close < input.vwap! && follow.close < input.ema9!;
+    ? follow.close > (input.vwap as number) && follow.close > (input.ema9 as number)
+    : follow.close < (input.vwap as number) && follow.close < (input.ema9 as number);
   if (!momentum) return { strategy: input.strategy, direction, state: "WAIT", reasons: ["VWAP/EMA9 continuation missing"] };
   return { strategy: input.strategy, direction, state: "CANDIDATE", reasons: ["Historical sweep and continuation observed; risk, retest, volume and trade certification still required"] };
 }
