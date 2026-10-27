@@ -41,6 +41,6 @@ describe("historical reversal candidate gate", () => {
   });
   it("blocks missing daily SMA inputs", () => {
     const input = base("K-HR-P", [bar(0,100,101,99,99.5),bar(1,99.5,99.8,98,98.5)]);
-    assert.equal(evaluateHistoricalReversal({...input, dailySma9:undefined}).state,"BLOCKED");
+    assert.equal(evaluateHistoricalReversal({...input, dailySma9:NaN}).state,"BLOCKED");
   });
 });
