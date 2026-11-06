@@ -17,7 +17,7 @@ export interface WeeklyZoneInput {
 export function discoverWeeklyZones(input: WeeklyZoneInput): readonly WeeklyZone[] {
   const { bars, evaluatedAt } = input;
   const weekMs = input.weekMs ?? 604800000;
-  const impulseRatio = input.impulseRatio ?? 1.5;
+  const impulseRatio = input.impulseRatio ?? 0.75;
   const maxTouches = input.maxTouches ?? 3;
   if (!Number.isFinite(evaluatedAt) || !Number.isSafeInteger(weekMs) || weekMs <= 0 ||
       !Number.isFinite(impulseRatio) || impulseRatio <= 0 || !Number.isSafeInteger(maxTouches) || maxTouches < 0)
