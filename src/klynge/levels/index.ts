@@ -3,3 +3,4 @@ export * from "./level-id.ts";
 export * from "./clustering.ts";
 export * from "./discover-levels.ts";
 export * from "./historical-reactions.ts";
+export * from "./weekly-smart-money-zones.ts";
