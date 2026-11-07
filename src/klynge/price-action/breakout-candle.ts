@@ -13,6 +13,9 @@ export interface BreakoutCandleInput {
   averageVolume?: number;
   spx?: Direction;
   mnq?: Direction;
+  /** SPX/MNQ five-minute regime evidence as-of timestamps. */
+  spxEvaluatedAt?: number;
+  mnqEvaluatedAt?: number;
   /** Confirmed structural target already known at evaluation time. */
   target?: number;
   targetKnownAt?: number;
@@ -71,6 +74,12 @@ export function evaluateBreakoutCandle(input: BreakoutCandleInput): BreakoutCand
       !validPositive(input.averageVolume) || !validPositive(input.target) ||
       !Number.isFinite(input.targetKnownAt) || input.targetKnownAt! > bars[bars.length - 3]!.timestamp)
     return blocked(side, "Verified VWAP, EMA9, volume baseline and pre-known target required");
+  const lastCloseAt = bars[bars.length - 1]!.timestamp + 300000;
+  if (!Number.isFinite(input.spxEvaluatedAt) || !Number.isFinite(input.mnqEvaluatedAt) ||
+      input.spxEvaluatedAt! < lastCloseAt - 300000 || input.spxEvaluatedAt! > input.evaluatedAt ||
+      input.mnqEvaluatedAt! < lastCloseAt - 300000 || input.mnqEvaluatedAt! > input.evaluatedAt ||
+      Math.abs(input.spxEvaluatedAt! - input.mnqEvaluatedAt!) > 300000)
+    return blocked(side, "Missing, stale, or unsynchronized SPX/MNQ five-minute evidence");
   const regime = side === "CALL" ? "BULLISH" : "BEARISH";
   if (input.spx !== regime || input.mnq !== regime)
     return blocked(side, "Synchronized SPX/MNQ directional confirmation missing");
