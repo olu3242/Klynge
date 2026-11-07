@@ -58,32 +58,39 @@ export function evaluateBreakoutCandle(input: BreakoutCandleInput): BreakoutCand
   if (input.candles.length < 3 || !Number.isFinite(input.evaluatedAt))
     return blocked(side, "Three completed 5m candles and valid evaluation time required");
   const bars = input.candles;
-  const symbol = bars[0]!.symbol;
-  if (!symbol) return blocked(side, "Missing symbol");
+  const first = bars[0];
+  if (!first || !first.symbol) return blocked(side, "Missing symbol");
+  const symbol = first.symbol;
   for (let i = 0; i < bars.length; i++) {
-    const b = bars[i]!;
+    const b = bars[i];
+    if (!b) return blocked(side, "Missing OHLCV bar");
     if (b.symbol !== symbol || b.timeframe !== "5m" ||
         ![b.timestamp, b.open, b.high, b.low, b.close, b.volume].every(Number.isFinite) ||
         b.open <= 0 || b.low <= 0 || b.high < b.low || b.volume <= 0 ||
         b.low > Math.min(b.open,b.close) || b.high < Math.max(b.open,b.close) ||
         b.timestamp + 300000 > input.evaluatedAt ||
-        (i > 0 && b.timestamp !== bars[i-1]!.timestamp + 300000))
+        (i > 0 && b.timestamp !== bars[i-1]?.timestamp + 300000))
       return blocked(side, "Invalid, unfinished, mixed, or nonconsecutive 5m OHLCV");
   }
+  const setup = bars[bars.length - 3];
+  const breakout = bars[bars.length - 2];
+  const retest = bars[bars.length - 1];
+  if (!setup || !breakout || !retest) return blocked(side, "Missing setup, breakout or retest bar");
   if (!validPositive(input.vwap) || !validPositive(input.ema9) ||
       !validPositive(input.averageVolume) || !validPositive(input.target) ||
-      !Number.isFinite(input.targetKnownAt) || input.targetKnownAt! > bars[bars.length - 3]!.timestamp)
+      !Number.isFinite(input.targetKnownAt) || (input.targetKnownAt ?? Infinity) > setup.timestamp)
     return blocked(side, "Verified VWAP, EMA9, volume baseline and pre-known target required");
-  const lastCloseAt = bars[bars.length - 1]!.timestamp + 300000;
-  if (!Number.isFinite(input.spxEvaluatedAt) || !Number.isFinite(input.mnqEvaluatedAt) ||
-      input.spxEvaluatedAt! < lastCloseAt - 300000 || input.spxEvaluatedAt! > input.evaluatedAt ||
-      input.mnqEvaluatedAt! < lastCloseAt - 300000 || input.mnqEvaluatedAt! > input.evaluatedAt ||
-      Math.abs(input.spxEvaluatedAt! - input.mnqEvaluatedAt!) > 300000)
+  const lastCloseAt = retest.timestamp + 300000;
+  const spxAt = input.spxEvaluatedAt;
+  const mnqAt = input.mnqEvaluatedAt;
+  if (spxAt === undefined || mnqAt === undefined || !Number.isFinite(spxAt) || !Number.isFinite(mnqAt) ||
+      spxAt < lastCloseAt - 300000 || spxAt > input.evaluatedAt ||
+      mnqAt < lastCloseAt - 300000 || mnqAt > input.evaluatedAt ||
+      Math.abs(spxAt - mnqAt) > 300000)
     return blocked(side, "Missing, stale, or unsynchronized SPX/MNQ five-minute evidence");
   const regime = side === "CALL" ? "BULLISH" : "BEARISH";
   if (input.spx !== regime || input.mnq !== regime)
     return blocked(side, "Synchronized SPX/MNQ directional confirmation missing");
-  const setup = bars[bars.length - 3]!, breakout = bars[bars.length - 2]!, retest = bars[bars.length - 1]!;
   const range = setup.high - setup.low;
   if (range <= 0) return wait(side, "Standout candle has no range");
   const body = Math.abs(setup.close - setup.open);
