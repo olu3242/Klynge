@@ -63,13 +63,14 @@ export function evaluateBreakoutCandle(input: BreakoutCandleInput): BreakoutCand
   const symbol = first.symbol;
   for (let i = 0; i < bars.length; i++) {
     const b = bars[i];
+    const previous = i > 0 ? bars[i - 1] : undefined;
     if (!b) return blocked(side, "Missing OHLCV bar");
     if (b.symbol !== symbol || b.timeframe !== "5m" ||
         ![b.timestamp, b.open, b.high, b.low, b.close, b.volume].every(Number.isFinite) ||
         b.open <= 0 || b.low <= 0 || b.high < b.low || b.volume <= 0 ||
         b.low > Math.min(b.open,b.close) || b.high < Math.max(b.open,b.close) ||
         b.timestamp + 300000 > input.evaluatedAt ||
-        (i > 0 && b.timestamp !== bars[i-1]?.timestamp + 300000))
+        (i > 0 && (!previous || b.timestamp !== previous.timestamp + 300000)))
       return blocked(side, "Invalid, unfinished, mixed, or nonconsecutive 5m OHLCV");
   }
   const setup = bars[bars.length - 3];
