@@ -110,6 +110,9 @@ export function evaluateBreakoutCandle(input: BreakoutCandleInput): BreakoutCand
     return wait(side, "Completed breakout candle did not close beyond standout extreme");
   if (breakout.volume < input.averageVolume * volumeMultiplier)
     return wait(side, "Breakout candle relative volume below threshold");
+  const stopExtreme = bull ? setup.low : setup.high;
+  if (bull ? Math.min(breakout.low, retest.low) <= stopExtreme : Math.max(breakout.high, retest.high) >= stopExtreme)
+    return wait(side, "Setup invalidation extreme breached before confirmed retest");
   const buffer = range * tolerance;
   const retestValid = bull
     ? retest.low <= level + buffer && retest.close > level && retest.close > retest.open
