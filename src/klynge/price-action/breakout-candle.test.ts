@@ -46,7 +46,9 @@ describe("breakout candle candidate (never certification)", () => {
     assert.equal(evaluateBreakoutCandle({...input("CALL"), evaluatedAt: t + 899999}).state, "BLOCKED");
   });
   it("blocks missing regime timestamps", () => {
-    assert.equal(evaluateBreakoutCandle({...input("CALL"), mnqEvaluatedAt: undefined}).state, "BLOCKED");
+    const x = input("CALL");
+    delete x.mnqEvaluatedAt;
+    assert.equal(evaluateBreakoutCandle(x).state, "BLOCKED");
   });
   it("blocks conflicting regime direction", () => {
     assert.equal(evaluateBreakoutCandle({...input("CALL"), mnq: "BEARISH"}).state, "BLOCKED");
@@ -66,8 +68,12 @@ describe("breakout candle candidate (never certification)", () => {
     assert.equal(evaluateBreakoutCandle({...x, candles}).state, "WAIT");
   });
   it("blocks unknown target, missing VWAP and invalid parameters", () => {
-    assert.equal(evaluateBreakoutCandle({...input("PUT"), target: undefined}).state, "BLOCKED");
-    assert.equal(evaluateBreakoutCandle({...input("CALL"), vwap: undefined}).state, "BLOCKED");
+    const missingTarget = input("PUT");
+    delete missingTarget.target;
+    assert.equal(evaluateBreakoutCandle(missingTarget).state, "BLOCKED");
+    const missingVwap = input("CALL");
+    delete missingVwap.vwap;
+    assert.equal(evaluateBreakoutCandle(missingVwap).state, "BLOCKED");
     assert.equal(evaluateBreakoutCandle({...input("CALL"), minimumRewardRisk: 1}).state, "BLOCKED");
   });
   it("blocks malformed or non-consecutive bars", () => {
